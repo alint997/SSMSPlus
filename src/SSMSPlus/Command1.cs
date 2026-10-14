@@ -1,18 +1,9 @@
-﻿using System;
-using System.ComponentModel.Design;
-using System.IO;
-using System.Reflection;
-using System.Windows;
-
-using EnvDTE80;
-
+﻿using EnvDTE80;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.Shell;
-
 using SSMSPlus.Services;
-
 using SSMSPlusCore;
 using SSMSPlusCore.App;
 using SSMSPlusCore.Di;
@@ -22,15 +13,15 @@ using SSMSPlusCore.Settings;
 using SSMSPlusCore.Utils;
 using SSMSPlusDb;
 using SSMSPlusDb.DbUpdate;
-
 using SSMSPlusDocument;
-
 using SSMSPlusHistory;
-
 using SSMSPlusPreferences;
-
 using SSMSPlusSearch;
-
+using System;
+using System.ComponentModel.Design;
+using System.IO;
+using System.Reflection;
+using System.Windows;
 using Task = System.Threading.Tasks.Task;
 
 namespace SSMSPlus

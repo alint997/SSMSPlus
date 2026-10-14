@@ -1,7 +1,5 @@
 ﻿namespace SSMSPlusHistory.UI.VM
 {
-    using Microsoft.SqlServer.Management.UI.VSIntegration;
-
     using SSMSPlusCore.App;
     using SSMSPlusCore.Integration;
     using SSMSPlusCore.Ui;
@@ -15,8 +13,6 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
-    using System.Windows.Documents;
-    using System.Windows.Media;
 
     public class HistoryControlVM : ViewModelBase
     {

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SSMSPlusCore.Ui.Controls.ComboCheckBox
+﻿namespace SSMSPlusCore.Ui.Controls.ComboCheckBox
 {
     public class ComboCheckBoxItem<T> : ViewModelBase, IComboCheckBoxItem
     {

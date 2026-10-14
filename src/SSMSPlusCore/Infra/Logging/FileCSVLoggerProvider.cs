@@ -1,15 +1,12 @@
-﻿using System;
+﻿using CsvHelper;
+using System.Globalization;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using CsvHelper;
-using CsvHelper.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 
 namespace SSMSPlusCore.Infra.Logging
 {
@@ -64,7 +61,7 @@ namespace SSMSPlusCore.Infra.Logging
             this._currentFilePath = Path.Combine(Settings.Folder, "log_" + DateTime.Now.ToString("yyyy-MM-dd@HH_mm") + ".csv");
 
             using (var writer = new StreamWriter(this._currentFilePath))
-            using (var csv = new CsvWriter(writer))
+            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
                 csv.WriteHeader<CsvLogEntry>();
                 csv.NextRecord();
@@ -134,9 +131,15 @@ namespace SSMSPlusCore.Infra.Logging
         void WriteLines(IEnumerable<CsvLogEntry> csvLogLines)
         {
             using (var writer = new StreamWriter(this._currentFilePath, append: true))
-            using (var csv = new CsvWriter(writer, new Configuration { HasHeaderRecord = false }))
+            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
-                csv.WriteRecords(csvLogLines);
+                // WriteRecord (singular) never writes a header row, so no CsvConfiguration is needed
+                // (CsvConfiguration is a record with init-only setters in CsvHelper 30+, which needs C# 9).
+                foreach (var line in csvLogLines)
+                {
+                    csv.WriteRecord(line);
+                    csv.NextRecord();
+                }
             }
         }
 

@@ -1,17 +1,14 @@
-﻿using System;
+﻿using Dapper;
+using Microsoft.Extensions.Logging;
+using SSMSPlusCore.App;
+using SSMSPlusCore.Database;
+using SSMSPlusDb.DbUpdate.Entities;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-
-using Dapper;
-
-using Microsoft.Extensions.Logging;
-
-using SSMSPlusCore.App;
-using SSMSPlusCore.Database;
-using SSMSPlusDb.DbUpdate.Entities;
 
 namespace SSMSPlusDb.DbUpdate
 {

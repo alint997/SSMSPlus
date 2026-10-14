@@ -1,17 +1,9 @@
-﻿using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
+﻿using Microsoft.VisualStudio.Shell.Interop;
 using SSMSPlusCore.Integration;
 using SSMSPlusCore.Integration.Connection;
-using SSMSPlusCore.Ui.Extensions;
 using SSMSPlusDocument.UI;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.Design;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 
 namespace SSMSPlusDocument
 {

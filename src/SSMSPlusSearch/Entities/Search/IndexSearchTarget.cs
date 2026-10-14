@@ -1,11 +1,8 @@
 ﻿using SSMSPlusCore.Ui.Search;
-using SSMSPlusCore.Utils;
 using SSMSPlusSearch.Entities.Search;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SSMSPlusSearch.Entities
 {

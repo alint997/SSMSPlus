@@ -1,21 +1,15 @@
-﻿using System;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
-using EnvDTE;
-using EnvDTE80;
+﻿using EnvDTE80;
 using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.Win32;
 using SSMSPlusDocument.UI;
 using SSMSPlusHistory.UI;
 using SSMSPlusSearch.UI;
+using System;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Threading;
 using Task = System.Threading.Tasks.Task;
 
 namespace SSMSPlus
@@ -39,10 +33,10 @@ namespace SSMSPlus
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = false, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
-    [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideMenuResource("Menus.ctmenu", 2)]
     [Guid(Command1Package.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    [ProvideAutoLoad(UIContextGuids.NoSolution, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideToolWindow(typeof(HistoryToolWindow), Style = VsDockStyle.Tabbed, Window = "00000000-0000-0000-0000-000000000001")]
     [ProvideToolWindow(typeof(SearchToolWindow), Window = "00000000-0000-0000-0000-000000000002", MultiInstances = true, Transient = true)]
     [ProvideToolWindow(typeof(ExportDocumentsWindow), Window = "00000000-0000-0000-0000-000000000003", MultiInstances = true, Transient = true)]
@@ -58,10 +52,42 @@ namespace SSMSPlus
         /// </summary>
         public Command1Package()
         {
-            // Inside this method you can place any initialization code that does not require
-            // any Visual Studio service because at this point the package object is created but
-            // not sited yet inside Visual Studio environment. The place to do all the other
-            // initialization is the Initialize method.
+            AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+        }
+
+        private static readonly string[] SsmsProvidedAssemblies = new[]
+        {
+            "SqlWorkbench.Interfaces",
+            "SqlPackageBase",
+            "Microsoft.SqlServer.ConnectionInfo",
+            "Microsoft.SqlServer.RegSvrEnum",
+        };
+
+        private static Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var assemblyName = new AssemblyName(args.Name);
+
+            // For SSMS-provided assemblies, always load from SSMS IDE folder
+            foreach (var ssmsAsm in SsmsProvidedAssemblies)
+            {
+                if (assemblyName.Name.Equals(ssmsAsm, StringComparison.OrdinalIgnoreCase))
+                {
+                    var ideDir = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+                    var idePath = Path.Combine(ideDir, assemblyName.Name + ".dll");
+                    if (File.Exists(idePath))
+                        return Assembly.LoadFrom(idePath);
+                    return null;
+                }
+            }
+
+            // For extension assemblies, load from extension folder
+            var extensionDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var candidatePath = Path.Combine(extensionDir, assemblyName.Name + ".dll");
+            if (File.Exists(candidatePath))
+            {
+                return Assembly.LoadFrom(candidatePath);
+            }
+            return null;
         }
 
         #region Package Members

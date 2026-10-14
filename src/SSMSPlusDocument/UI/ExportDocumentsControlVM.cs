@@ -1,19 +1,16 @@
 ﻿namespace SSMSPlusDocument.UI
 {
-    using System;
-    using System.IO;
-    using System.Threading;
-    using System.Threading.Tasks;
-
     using Microsoft.Win32;
-
     using SSMSPlusCore.Integration.Connection;
     using SSMSPlusCore.Messaging;
     using SSMSPlusCore.Ui;
     using SSMSPlusCore.Ui.Text;
     using SSMSPlusCore.Utils;
-
     using SSMSPlusDocument.Services;
+    using System;
+    using System.IO;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     public class ExportDocumentsControlVM : ViewModelBase
     {

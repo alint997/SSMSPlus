@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using SSMSPlusHistory.Repositories;
-using SSMSPlusHistory.Services;
+﻿using SSMSPlusHistory.Services;
+using System;
 
 namespace SSMSPlusHistory
 {

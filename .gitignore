@@ -15,3 +15,5 @@ TestResults/
 /**/obj/
 /**/bin/
 /**/*.Cache
+# build output
+/dist/

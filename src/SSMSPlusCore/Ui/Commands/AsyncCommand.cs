@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using SSMSPlusCore.Ui.Utils;
+using SSMSPlusCore.Utils;
+using System;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using SSMSPlusCore.Ui.Utils;
-using SSMSPlusCore.Utils;
 
 namespace SSMSPlusCore.Ui
 {

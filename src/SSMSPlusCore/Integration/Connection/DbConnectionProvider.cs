@@ -1,15 +1,9 @@
 ﻿using Microsoft.SqlServer.Management.Smo.RegSvrEnum;
 using Microsoft.SqlServer.Management.UI.VSIntegration;
 using Microsoft.SqlServer.Management.UI.VSIntegration.ObjectExplorer;
-using Microsoft.VisualStudio.Shell;
 using SSMSPlusCore.Integration.ObjectExplorer;
 using SSMSPlusCore.SqlServer;
-using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SSMSPlusCore.Integration.Connection
 {
@@ -24,13 +18,49 @@ namespace SSMSPlusCore.Integration.Connection
 
         public DbConnectionString GetFromActiveConnection()
         {
-            UIConnectionInfo connInfo = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo?.UIConnectionInfo;
-            if (connInfo == null || connInfo.AdvancedOptions["DATABASE"] == null || DbHelper.IsSystemDb(connInfo.AdvancedOptions["DATABASE"]))
+            UIConnectionInfo connInfo = GetActiveUIConnectionInfo();
+            if (connInfo == null)
+                return null;
+
+            string database = null;
+            try { database = connInfo.AdvancedOptions?["DATABASE"]; } catch { }
+
+            if (string.IsNullOrEmpty(database) || DbHelper.IsSystemDb(database))
             {
                 return null;
             }
 
-            return new DbConnectionString(GetConnectionString(connInfo), connInfo.AdvancedOptions["DATABASE"]);
+            return new DbConnectionString(GetConnectionString(connInfo), database);
+        }
+
+        private UIConnectionInfo GetActiveUIConnectionInfo()
+        {
+            // Primary: ServiceCache (works in SSMS 18/20)
+            try
+            {
+                var connInfo = ServiceCache.ScriptFactory.CurrentlyActiveWndConnectionInfo?.UIConnectionInfo;
+                if (connInfo != null)
+                    return connInfo;
+            }
+            catch { }
+
+            // Fallback: ISqlEditorService (more reliable in SSMS 22)
+            try
+            {
+                var editorService = _packageProvider.AsyncPackage
+                    .GetServiceAsync(typeof(SSqlEditorService)).Result as ISqlEditorService;
+                if (editorService != null)
+                {
+                    var details = editorService.GetActiveEditorDetails();
+                    if (details != null && !string.IsNullOrEmpty(details.Moniker))
+                    {
+                        return editorService.GetUIConnectionInfoForSpecificQueryEditor(details.Moniker);
+                    }
+                }
+            }
+            catch { }
+
+            return null;
         }
 
         public DbConnectionString GetFromSelectedDatabase()

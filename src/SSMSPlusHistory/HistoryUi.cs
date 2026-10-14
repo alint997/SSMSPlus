@@ -1,12 +1,9 @@
-﻿using System;
-using System.ComponentModel.Design;
-
-using Microsoft.VisualStudio.Shell;
+﻿using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-
 using SSMSPlusCore.Integration;
-
 using SSMSPlusHistory.UI;
+using System;
+using System.ComponentModel.Design;
 
 namespace SSMSPlusHistory
 {

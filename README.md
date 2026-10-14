@@ -1,5 +1,7 @@
 # SSMSPlus
-SSMS Plus is a productivity extension for SQL Server Management Studio 18 / 19 / 20.
+SSMS Plus is a productivity extension for SQL Server Management Studio.
+
+**Version 7.0 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -13,13 +15,17 @@ It extends SSMS with a handful set of features:
 - [Getting started](#getting-started)
   * [Prerequisites](#prerequisites)
   * [Download](#download)
+  * [Build](#build)
   * [Install](#install)
+    + [SSMS 22](#ssms-22)
+    + [SSMS 21](#ssms-21)
   * [Update](#update)
   * [Launch](#launch)
 - [Features](#features)
   * [Query History](#query-history)
   * [Schema Object Search](#schema-object-search)
   * [Documents Export](#documents-export)
+- [What's new in 7.0 (SSMS 22 support)](#whats-new-in-70-ssms-22-support)
 - [Contributing](#contributing)
   * [How can I contribute ?](#how-can-i-contribute--)
   * [Project Goals](#project-goals)
@@ -33,55 +39,148 @@ It extends SSMS with a handful set of features:
 
 # Getting started
 ## Prerequisites
-SQL Server Management Studio 18 / 19 / 20
+* SQL Server Management Studio 21 / 22 (64-bit) for version 7.0
+* To build from source: Visual Studio 2022 or newer with the **Visual Studio extension development** workload and .NET Framework 4.8
 
 ## Download
+### For SSMS 21 / 22
+
+Build from source with `build.cmd`, then install with `install-ssms22.cmd`, see [Build](#build) and [Install](#install).
+
 ### For SSMS 20
 
-Get the latest build from the [Releases](https://github.com/akarzazi/SSMSPlus/releases) page.
+Get this release:
+https://github.com/akarzazi/SSMSPlus/releases/tag/6.0
 
 ### For SSMS 19
 
-Get this release: 
+Get this release:
 https://github.com/akarzazi/SSMSPlus/releases/tag/5.0
 
 ### For SSMS 18
 
-Get this release: 
+Get this release:
 https://github.com/akarzazi/SSMSPlus/releases/tag/4.0
+
+## Build
+
+### Requirements
+* Windows with **Visual Studio 2022 or newer** and the **Visual Studio extension development** workload (it includes MSBuild, the VSSDK and .NET Framework 4.8 targeting)
+* Internet access for the NuGet restore (packages go to `src/packages`)
+
+### Option 1: build script (recommended)
+
+From the repository root run:
+
+```
+build.cmd            (Release)
+build.cmd Debug      (Debug)
+```
+
+The script finds MSBuild with `vswhere`, restores the NuGet packages, rebuilds `src/SSMSPlus.sln` and creates the `dist` folder:
+
+| Output | Content |
+| --- | --- |
+| `dist\SSMSPlus.vsix` | VSIX package |
+| `dist\SSMSPlus\` | extension files, ready to be copied into SSMS (used by `install-ssms22.cmd`) |
+| `dist\SSMSPlus-ssms22.zip` | zip of `dist\SSMSPlus` for distribution |
+
+The script builds with `CopyVsixExtensionFiles=false`, so it does not need administrator rights.
+
+### Option 2: Visual Studio
+
+1. Open `src/SSMSPlus.sln`.
+2. Right click on the solution > **Restore NuGet Packages**.
+3. Select the `Release` configuration and run **Build > Rebuild Solution**.
+4. The output is in `src/SSMSPlus/bin/Release` (`SSMSPlus.vsix` + the extension files).
+
+Notes:
+* The `Debug` configuration also copies the files into `...\SSMS 22\Release\Common7\IDE\Extensions\SSMSPlus` (Visual Studio must run as administrator for that).
+* If the project files were changed outside Visual Studio, close and reopen the solution, then run **Clean** and **Rebuild**, otherwise Visual Studio may keep the old references in memory.
 
 ## Install
 
-> SQL Server Management Studio extensions cannot be installed via VSIX Installer under SSMS 20.x. See
-> https://docs.microsoft.com/en-us/sql/ssms/install-extensions-in-sql-server-management-studio-ssms?view=sql-server-ver15|
+### SSMS 22
 
-The release is an SFX package, extract the archive content to the SSMS install location.
+SSMS 22 is installed by default in:
 
-On the extract dialog, fill the path of the extensions directory.
+`C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE`
 
-`C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE\Extensions`
+#### Option 1: install script (recommended)
 
-![SSMS Plus Extension dlls](docs/illustrations/install-sfx-extract.png?raw=true "SSMS Plus Extension dlls")
+1. Build the extension (see [Build](#build)).
+2. **Close all SSMS windows.**
+3. Right click on `install-ssms22.cmd` > **Run as administrator** (or run it from an administrator command prompt).
 
-**Note:** you might need to extract the SFX as admin
+The script:
+* checks that SSMS 22 exists and is not running;
+* deletes the previous `Extensions\SSMSPlus` folder (old versions contain SQLitePCLRaw / Microsoft.Data.Sqlite dlls that must not be loaded anymore);
+* copies `dist\SSMSPlus` (or `src\SSMSPlus\bin\Release`) to `Extensions\SSMSPlus`;
+* runs `SSMS.exe /updateconfiguration` so SSMS reloads the extension and its menu.
 
-It should create an `SSMSPlus` folder like the following.
-![SSMS Plus Extension dlls](docs/illustrations/install-folder-screen.png?raw=true "SSMS Plus Extension dlls")
+If SSMS is installed in another folder, pass its `Common7\IDE` path:
+
+```
+install-ssms22.cmd "D:\Tools\SSMS 22\Release\Common7\IDE"
+```
+
+#### Option 2: manual install
+
+1. Close SSMS.
+2. Delete `C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\Extensions\SSMSPlus` if it exists.
+3. Copy the content of `dist\SSMSPlus` (or `src\SSMSPlus\bin\Release`) to that folder (administrator rights are required).
+4. From a command prompt **run as administrator**:
+
+   ```
+   cd /d "C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE"
+   SSMS.exe /updateconfiguration
+   ```
+
+#### Option 3: VSIX installer
+
+From a command prompt (do not double click the `.vsix`, Windows associates it with Visual Studio, not SSMS):
+
+```
+"C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\VSIXInstaller.exe" dist\SSMSPlus.vsix
+```
+
+The VSIX installer puts the extension in `%LocalAppData%\Microsoft\SSMS\22.0_<id>\Extensions`. Do not combine it with options 1 / 2 (the package would be registered twice); to remove it:
+
+```
+"C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\VSIXInstaller.exe" /uninstall:SSMSPlus.4018b534-92e2-4cc5-abf6-f526817da0d9
+```
+
+### SSMS 21
+
+Same steps, using the SSMS 21 folder, e.g. `C:\Program Files\Microsoft SQL Server Management Studio 21\Release\Common7\IDE` (pass it as parameter to `install-ssms22.cmd`). SSMS 21 has not been tested with version 7.0.
+
+### Check the installation
+
+1. Start SSMS.
+2. Open **Tools > SSMS Plus**.
+3. Run a query, then open **Execution History**: the query must be listed.
+
+If something goes wrong, see [Troubleshooting](#troubleshooting).
 
 ## Update
 
-Close SQL Server Management Studio.
+1. Build the new version (`build.cmd`).
+2. Close SSMS.
+3. Run `install-ssms22.cmd` as administrator (it removes the previous version first).
 
-Delete the SSMSPlus extension directory:
-
-`C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE\Extensions\SSMSPlus`
-
-Follow the install steps.
+Your query history and search indexes are kept (they are stored in `%LocalAppData%\SSMS Plus\SSMS-Plus.sqlite`, not in the extension folder).
 
 ## Launch
-A new top menu "SSMS Plus" will be available.
+The menu is available under **Tools > SSMS Plus**:
+
+* Execution History (`Ctrl+Alt+H`)
+* Schema Search (`Ctrl+Alt+,`)
+* Document Export (`Ctrl+Alt+E`)
+* About SSMSPlus
 
 ![SSMS Plus Menu](docs/illustrations/menu-screen.png?raw=true "SSMS Plus Menu")
+
+If the menu does not show up after an install or update, close SSMS and run `SSMS.exe /updateconfiguration` as administrator (see [Install](#install)).
 
 # Features
 
@@ -106,6 +205,30 @@ This tool is handy when you want to preview or export files from the database.
 The query is expecting two columns corresponding respectively to file name and file content.
 
 ![SSMS Plus Documents Export](docs/illustrations/document-export-screen.png?raw=true "Documents Export")
+
+# What's new in 7.0 (SSMS 22 support)
+
+**SSMS 21 / 22 compatibility**
+* The extension targets `Microsoft.VisualStudio.Ssms` `[21.0,)` on **amd64** (SSMS 21+ is 64-bit and based on the Visual Studio 18 shell).
+* Compile-time references now come from SSMS 22 (`src/SSMSPlus/assemblies`): `SqlWorkbench.Interfaces`, `SqlPackageBase`, `Microsoft.SqlServer.ConnectionInfo`, `Microsoft.SqlServer.RegSvrEnum` and `Microsoft.VisualStudio.Interop` (which replaces the old `EnvDTE*` interop assemblies, fixing *"Method not found: EnvDTE._dispCommandEvents_BeforeExecuteEventHandler..ctor"*, issue #33).
+* The package resolves SSMS assemblies from the SSMS IDE folder and its own dependencies from the extension folder (`AssemblyResolve` in `Command1Package`).
+* Query History hooks `Query.Execute` plus a global command-events fallback, and reads the connection info through `ISqlEditorService` when `ServiceCache.ScriptFactory` is not available.
+* The menu was moved to **Tools > SSMS Plus** (VSCT parent group `IDG_VS_TOOLS_EXT_TOOLS`); the menu resource version was bumped so SSMS reloads it.
+* New `build.cmd` (restore + build + `dist` package) and `install-ssms22.cmd` (install / update into SSMS 22) scripts at the repository root.
+* Debug start program is `SSMS.exe` of SSMS 22 and the Debug build deploys to `...\SSMS 22\Release\Common7\IDE\Extensions\SSMSPlus`.
+
+**Local storage (SQLite)**
+* SSMS 22.10+ redirects every `SQLitePCLRaw` version to its own 3.x build (see `SSMS.exe.config`), which broke `Microsoft.Data.Sqlite` inside the extension (*"Method not found: SQLitePCL.ISQLite3Provider.sqlite3_win32_set_directory"*).
+* The local store now uses **System.Data.SQLite 1.0.119** (outside the version range SSMS redirects). `SQLite.Interop.dll` is shipped in the `x64` / `x86` sub-folders of the extension.
+* The database file (`%LocalAppData%\SSMS Plus\SSMS-Plus.sqlite`) and its date format are unchanged, existing history and search indexes are kept.
+
+**NuGet packages updated (security)**
+* `System.Security.Cryptography.Xml` 4.5.0 → 10.0.13 (4.5.0 is affected by CVE-2022-34716; 10.0.8 – 10.0.12 are also flagged on nuget.org).
+* `Microsoft.Extensions.*` 2.2.0 → 10.0.13 (aligned with the versions SSMS 22 loads at runtime), with `Microsoft.Bcl.AsyncInterfaces`, `Microsoft.Bcl.Cryptography`, `System.Formats.Asn1`, `System.Diagnostics.DiagnosticSource` 10.0.13.
+* `System.Memory` 4.6.3, `System.Buffers` 4.6.1, `System.Numerics.Vectors` 4.6.1, `System.Runtime.CompilerServices.Unsafe` 6.1.2, `System.Threading.Tasks.Extensions` 4.6.3, `System.ValueTuple` 4.6.2, `System.ComponentModel.Annotations` 5.0.0.
+* `Newtonsoft.Json` 13.0.4, `Dapper.StrongName` 2.1.89, `Microsoft.Xaml.Behaviors.Wpf` 1.1.161, `CsvHelper` 33.1.0 (the CSV logger was adapted to the new API).
+* Removed `System.Security.AccessControl`, `System.Security.Permissions`, `System.Security.Principal.Windows` (only needed by the old `Cryptography.Xml`).
+* Not changed on purpose: the `Microsoft.VisualStudio.*` 15.x SDK / interop packages and `Microsoft.VSSDK.BuildTools` (compile-time only, provided by SSMS at runtime).
 
 # Contributing
 
@@ -140,16 +263,18 @@ You can contribute in the following ways :
 
 This section explains how to setup Visual Studio to debug the plugin within an SSMS Instance. 
 
-1.  In the Debug section of the main project "SSMSPlus", setup your SSMS path as the startup program.
+1.  In the Debug section of the main project "SSMSPlus", setup your SSMS path as the startup program (already set in the project for SSMS 22).
 
-`C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE\Ssms.exe`
+`C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\SSMS.exe`
 
 ![SSMS Plus Debug Startup](docs/illustrations/debug-vs-startup.png?raw=true "Documents Export")
 
-2.  In the VSIX section of the main project "SSMSPlus", configure the deployment path for the plugin. 
+2.  In the VSIX section of the main project "SSMSPlus", configure the deployment path for the plugin (already set for the Debug configuration).
 
-`C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE\Extensions\SSMSPlus`
+`C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE\Extensions\SSMSPlus`
 ![SSMS Plus Documents Export](docs/illustrations/debug-vs-copy-vsix.png?raw=true "Documents Export")
+
+> Deploying to `Program Files` requires Visual Studio to run as administrator.
 
 3. That's All ! You may start your the debugging session.
 
@@ -164,3 +289,7 @@ It is handy for faster UI prototyping, since it does not require to launch SSMS.
 A log record in the folder corresponding to `Environment.SpecialFolder.LocalApplicationData + "\SSMS Plus"` which corresponds generally to `C:\Users\<USER>\AppData\Local\SSMS Plus`.
 
 Theses logs are very useful for diagnostics.
+
+Common SSMS 22 issues:
+* **Menu not visible**: close SSMS, run `install-ssms22.cmd` again (or `SSMS.exe /updateconfiguration` as administrator), look under **Tools > SSMS Plus**.
+* **"Could not load SSMSPlus" / SQLite errors**: delete the extension folder and reinstall, old `SQLitePCLRaw` / `Microsoft.Data.Sqlite` dlls must not stay next to the new ones.

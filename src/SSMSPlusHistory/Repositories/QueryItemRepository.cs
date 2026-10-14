@@ -1,12 +1,12 @@
 ﻿namespace SSMSPlusHistory.Repositories
 {
+    using SSMSPlusCore.Database;
+    using SSMSPlusHistory.Entities;
+    using SSMSPlusHistory.Services.Filtering;
     using System;
     using System.Collections.Generic;
     using System.Text;
     using System.Threading.Tasks;
-    using SSMSPlusCore.Database;
-    using SSMSPlusHistory.Entities;
-    using SSMSPlusHistory.Services.Filtering;
 
     public class QueryItemRepository
     {

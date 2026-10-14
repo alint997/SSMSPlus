@@ -38,13 +38,12 @@
     <Groups>
       <Group guid="guidCommand1PackageCmdSet" id="MyMenuGroup" priority="0x0600">
         <Parent guid="guidCommand1PackageCmdSet" id="MyTopMenu"/>
-        <!--<Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />-->
       </Group>
     </Groups>
 
     <Menus>
-      <Menu guid="guidCommand1PackageCmdSet" id="MyTopMenu" type="Menu">
-        <Parent guid="guidSHLMainMenu" id="IDG_VS_MM_TOOLSADDINS"/>
+      <Menu guid="guidCommand1PackageCmdSet" id="MyTopMenu" priority="0x0900" type="Menu">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_TOOLS_EXT_TOOLS"/>
         <Strings>
           <ButtonText>SSMS Plus</ButtonText>
         </Strings>
@@ -66,6 +65,7 @@
         <Icon guid="timeback" id="bmpPic1" />
         <Strings>
           <ButtonText>Execution History</ButtonText>
+          <CanonicalName>SSMSPlus.ExecutionHistory</CanonicalName>
         </Strings>
       </Button>
       <Button guid="guidCommand1PackageCmdSet" id="SchemaSearchCmd" priority="0x0100" type="Button">
@@ -73,6 +73,7 @@
         <Icon guid="find" id="bmpPic1" />
         <Strings>
           <ButtonText>Schema Search</ButtonText>
+          <CanonicalName>SSMSPlus.SchemaSearch</CanonicalName>
         </Strings>
       </Button>
       <Button guid="guidCommand1PackageCmdSet" id="DocumentViewerCmd" priority="0x0100" type="Button">
@@ -80,12 +81,14 @@
         <Icon guid="download" id="bmpPic1" />
         <Strings>
           <ButtonText>Document Export</ButtonText>
+          <CanonicalName>SSMSPlus.DocumentExport</CanonicalName>
         </Strings>
       </Button>
       <Button guid="guidCommand1PackageCmdSet" id="PreferencesCmd" priority="0x0100" type="Button">
         <Parent guid="guidCommand1PackageCmdSet" id="MyMenuGroup" />
         <Strings>
           <ButtonText>About SSMSPlus</ButtonText>
+          <CanonicalName>SSMSPlus.AboutSSMSPlus</CanonicalName>
         </Strings>
       </Button>
     </Buttons>

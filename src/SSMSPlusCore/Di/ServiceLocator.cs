@@ -1,7 +1,7 @@
 ﻿namespace SSMSPlusCore.Di
 {
-    using System;
     using Microsoft.Extensions.DependencyInjection;
+    using System;
 
     public class ServiceLocator
     {
