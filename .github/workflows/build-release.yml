@@ -1,0 +1,55 @@
+name: Build and release (SSMS 22)
+
+# Builds the extension on every push to master / pull request (artifact only)
+# and publishes a GitHub release when a tag like v7.0 is pushed:
+#     git tag v7.0
+#     git push origin v7.0
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build (Release)
+        shell: cmd
+        run: call build.cmd Release
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SSMSPlus-ssms22
+          path: |
+            dist/SSMSPlus-ssms22.zip
+            dist/SSMSPlus.vsix
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SSMS Plus ${{ github.ref_name }} - SSMS 21 / 22
+          files: |
+            dist/SSMSPlus-ssms22.zip
+            dist/SSMSPlus.vsix
+          body: |
+            SSMS Plus for SQL Server Management Studio 21 / 22 (64-bit).
+
+            **Install (SSMS 22)**
+            1. Download `SSMSPlus-ssms22.zip` and extract it.
+            2. Close all SSMS windows.
+            3. Right click `install-ssms22.cmd` > **Run as administrator**.
+            4. Start SSMS: the menu is under **Tools > SSMS Plus**.
+
+            See the README for manual install, update and troubleshooting.

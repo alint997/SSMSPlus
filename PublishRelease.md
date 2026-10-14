@@ -1,8 +1,31 @@
-As for 06/06/2020
+# Publish a release (SSMS 21 / 22)
 
-Vsix install does not work, see
+## Automatic (GitHub Actions)
 
-https://docs.microsoft.com/en-us/sql/ssms/install-extensions-in-sql-server-management-studio-ssms?view=sql-server-ver15
+The workflow `.github/workflows/build-release.yml` builds the extension on a Windows runner
+(`build.cmd Release`) and, for tags starting with `v`, publishes a GitHub release with:
 
-# Publish workaround
-Zip the extension folder in `C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE\Extensions\SSMSPlus` as SFX package
+* `SSMSPlus-ssms22.zip` - `SSMSPlus\` folder + `install-ssms22.cmd`
+* `SSMSPlus.vsix`
+
+To publish a new version:
+
+1. Update the version in `src/SSMSPlus/source.extension.vsixmanifest` (`Identity Version`)
+   and `src/SSMSPlus/Properties/AssemblyInfo.cs` (`AssemblyFileVersion`).
+   Do not change `AssemblyVersion` build number unless a new DB upgrade script is added
+   (it is used as the local database version).
+2. Commit and push to `master`.
+3. Create and push the tag:
+
+   ```
+   git tag v7.0
+   git push origin v7.0
+   ```
+
+4. The release appears on https://github.com/alint997/SSMSPlus/releases when the workflow finishes.
+
+## Manual
+
+1. Run `build.cmd` on a machine with Visual Studio 2022+ (VS extension development workload).
+2. On GitHub: Releases > *Draft a new release*, create the tag (e.g. `v7.0`) and attach
+   `dist\SSMSPlus-ssms22.zip` and `dist\SSMSPlus.vsix`.

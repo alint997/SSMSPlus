@@ -45,7 +45,14 @@ It extends SSMS with a handful set of features:
 ## Download
 ### For SSMS 21 / 22
 
-Build from source with `build.cmd`, then install with `install-ssms22.cmd`, see [Build](#build) and [Install](#install).
+Get the latest build from the [Releases](https://github.com/alint997/SSMSPlus/releases) page of this fork:
+
+1. Download `SSMSPlus-ssms22.zip` and extract it.
+2. Close all SSMS windows.
+3. Right click `install-ssms22.cmd` > **Run as administrator**.
+4. Start SSMS: the menu is under **Tools > SSMS Plus**.
+
+You can also build it yourself, see [Build](#build) and [Install](#install).
 
 ### For SSMS 20
 
@@ -83,9 +90,11 @@ The script finds MSBuild with `vswhere`, restores the NuGet packages, rebuilds `
 | --- | --- |
 | `dist\SSMSPlus.vsix` | VSIX package |
 | `dist\SSMSPlus\` | extension files, ready to be copied into SSMS (used by `install-ssms22.cmd`) |
-| `dist\SSMSPlus-ssms22.zip` | zip of `dist\SSMSPlus` for distribution |
+| `dist\SSMSPlus-ssms22.zip` | release package: `SSMSPlus\` folder + `install-ssms22.cmd` |
 
 The script builds with `CopyVsixExtensionFiles=false`, so it does not need administrator rights.
+
+The same script runs on GitHub Actions (`.github/workflows/build-release.yml`): every push to `master` produces a build artifact and every `v*` tag publishes a release, see [PublishRelease.md](PublishRelease.md).
 
 ### Option 2: Visual Studio
 
@@ -108,14 +117,14 @@ SSMS 22 is installed by default in:
 
 #### Option 1: install script (recommended)
 
-1. Build the extension (see [Build](#build)).
+1. Download and extract `SSMSPlus-ssms22.zip` from [Releases](https://github.com/alint997/SSMSPlus/releases), or build the extension (see [Build](#build)).
 2. **Close all SSMS windows.**
 3. Right click on `install-ssms22.cmd` > **Run as administrator** (or run it from an administrator command prompt).
 
 The script:
 * checks that SSMS 22 exists and is not running;
 * deletes the previous `Extensions\SSMSPlus` folder (old versions contain SQLitePCLRaw / Microsoft.Data.Sqlite dlls that must not be loaded anymore);
-* copies `dist\SSMSPlus` (or `src\SSMSPlus\bin\Release`) to `Extensions\SSMSPlus`;
+* copies the `SSMSPlus` folder next to it (release zip), or `dist\SSMSPlus`, or `src\SSMSPlus\bin\Release` to `Extensions\SSMSPlus`;
 * runs `SSMS.exe /updateconfiguration` so SSMS reloads the extension and its menu.
 
 If SSMS is installed in another folder, pass its `Common7\IDE` path:

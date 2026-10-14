@@ -9,6 +9,7 @@ rem  Default SSMS path:
 rem     C:\Program Files\Microsoft SQL Server Management Studio 22\Release\Common7\IDE
 rem
 rem  Source of the files (first one found):
+rem     SSMSPlus\                         (extracted release zip)
 rem     dist\SSMSPlus\                    (created by build.cmd)
 rem     src\SSMSPlus\bin\Release\
 rem ---------------------------------------------------------------------------
@@ -39,7 +40,8 @@ if not errorlevel 1 (
 )
 
 rem --- source files -----------------------------------------------------------
-set "SRC=%ROOT%dist\SSMSPlus"
+set "SRC=%ROOT%SSMSPlus"
+if not exist "%SRC%\SSMSPlus.dll" set "SRC=%ROOT%dist\SSMSPlus"
 if not exist "%SRC%\SSMSPlus.dll" set "SRC=%ROOT%src\SSMSPlus\bin\Release"
 if not exist "%SRC%\SSMSPlus.dll" (
     echo [ERROR] Build output not found. Run build.cmd first.

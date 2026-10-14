@@ -9,7 +9,7 @@ rem  workload. Output:
 rem     dist\SSMSPlus.vsix         - VSIX package
 rem     dist\SSMSPlus\             - extension files, ready to copy into
 rem                                  ...\SSMS 22\Release\Common7\IDE\Extensions\SSMSPlus
-rem     dist\SSMSPlus-ssms22.zip   - zip of dist\SSMSPlus
+rem     dist\SSMSPlus-ssms22.zip   - release package: SSMSPlus\ + install-ssms22.cmd
 rem ---------------------------------------------------------------------------
 setlocal EnableExtensions
 
@@ -67,7 +67,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Expand-Archive -LiteralPath '%DIST%\tmp.zip' -DestinationPath '%DIST%\SSMSPlus' -Force;" ^
   "Remove-Item -LiteralPath '%DIST%\tmp.zip';" ^
   "Remove-Item -LiteralPath '%DIST%\SSMSPlus\[Content_Types].xml' -ErrorAction SilentlyContinue;" ^
-  "Compress-Archive -Path '%DIST%\SSMSPlus' -DestinationPath '%DIST%\SSMSPlus-ssms22.zip' -Force"
+  "Copy-Item -LiteralPath '%ROOT%install-ssms22.cmd' -Destination '%DIST%\install-ssms22.cmd';" ^
+  "Compress-Archive -Path '%DIST%\SSMSPlus','%DIST%\install-ssms22.cmd' -DestinationPath '%DIST%\SSMSPlus-ssms22.zip' -Force"
 if errorlevel 1 goto :error
 
 echo.
