@@ -18,8 +18,8 @@ To publish a new version:
 3. Create and push the tag:
 
    ```
-   git tag v7.2
-   git push origin v7.2
+   git tag v7.3
+   git push origin v7.3
    ```
 
 4. The release appears on https://github.com/alint997/SSMSPlus/releases when the workflow finishes.
@@ -27,5 +27,5 @@ To publish a new version:
 ## Manual
 
 1. Run `build.cmd` on a machine with Visual Studio 2022+ (VS extension development workload).
-2. On GitHub: Releases > *Draft a new release*, create the tag (e.g. `v7.2`) and attach
+2. On GitHub: Releases > *Draft a new release*, create the tag (e.g. `v7.3`) and attach
    `dist\SSMSPlus-ssms22.zip` and `dist\SSMSPlus.vsix`.

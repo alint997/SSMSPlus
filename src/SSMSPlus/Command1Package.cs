@@ -32,13 +32,13 @@ namespace SSMSPlus
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = false, AllowsBackgroundLoading = true)]
-    [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
-    [ProvideMenuResource("Menus.ctmenu", 2)]
+    [ProvideMenuResource("Menus.ctmenu", 6)]
     [Guid(Command1Package.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideToolWindow(typeof(HistoryToolWindow), Style = VsDockStyle.Tabbed, Window = "00000000-0000-0000-0000-000000000001")]
     [ProvideToolWindow(typeof(SearchToolWindow), Window = "00000000-0000-0000-0000-000000000002", MultiInstances = true, Transient = true)]
+    [ProvideToolWindow(typeof(SSMSPlus.Features.ExecutionPlan.PlanToolWindow), Style = VsDockStyle.MDI, Transient = true)]
     [ProvideToolWindow(typeof(ExportDocumentsWindow), Window = "00000000-0000-0000-0000-000000000003", MultiInstances = true, Transient = true)]
     public sealed class Command1Package : AsyncPackage
     {
@@ -61,6 +61,17 @@ namespace SSMSPlus
             "SqlPackageBase",
             "Microsoft.SqlServer.ConnectionInfo",
             "Microsoft.SqlServer.RegSvrEnum",
+            "Microsoft.SqlServer.GridControl",
+            "Microsoft.SqlServer.TransactSql.ScriptDom",
+        };
+
+        // Folders (relative to the SSMS IDE folder) where SSMS keeps the assemblies above.
+        private static readonly string[] SsmsAssemblyFolders = new[]
+        {
+            "",
+            @"Extensions\Application",
+            "PrivateAssemblies",
+            "PublicAssemblies",
         };
 
         private static Assembly OnAssemblyResolve(object sender, ResolveEventArgs args)
@@ -72,10 +83,20 @@ namespace SSMSPlus
             {
                 if (assemblyName.Name.Equals(ssmsAsm, StringComparison.OrdinalIgnoreCase))
                 {
+                    // Reuse the copy SSMS already loaded, if any.
+                    foreach (var loaded in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        if (string.Equals(loaded.GetName().Name, assemblyName.Name, StringComparison.OrdinalIgnoreCase))
+                            return loaded;
+                    }
+
                     var ideDir = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
-                    var idePath = Path.Combine(ideDir, assemblyName.Name + ".dll");
-                    if (File.Exists(idePath))
-                        return Assembly.LoadFrom(idePath);
+                    foreach (var folder in SsmsAssemblyFolders)
+                    {
+                        var idePath = Path.Combine(ideDir, folder, assemblyName.Name + ".dll");
+                        if (File.Exists(idePath))
+                            return Assembly.LoadFrom(idePath);
+                    }
                     return null;
                 }
             }

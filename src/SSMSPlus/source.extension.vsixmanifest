@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="SSMSPlus.4018b534-92e2-4cc5-abf6-f526817da0d9" Version="7.2" Language="en-US" Publisher="alint997" />
+        <Identity Id="SSMSPlus.4018b534-92e2-4cc5-abf6-f526817da0d9" Version="7.3" Language="en-US" Publisher="alint997" />
         <DisplayName>SSMSPlus</DisplayName>
         <Description xml:space="preserve">Useful extensions for SSMS 21 / 22 (query history, schema search, document export)</Description>
         <MoreInfo>https://github.com/alint997/SSMSPlus</MoreInfo>

@@ -20,6 +20,9 @@
   <!--This header contains the command ids for the menus provided by the shell. -->
   <Extern href="vsshlids.h" />
 
+  <!-- Visual Studio image catalog (KnownMonikers): theme-aware icons -->
+  <Include href="KnownImageIds.vsct" />
+
   <!--The Commands section is where commands, menus, and menu groups are defined.
       This section uses a Guid to identify the package that provides the command defined inside it. -->
   <Commands package="guidCommand1Package">
@@ -39,11 +42,35 @@
       <Group guid="guidCommand1PackageCmdSet" id="MyMenuGroup" priority="0x0600">
         <Parent guid="guidCommand1PackageCmdSet" id="MyTopMenu"/>
       </Group>
+      <!-- Tools > SSMS Plus: query tools (shown after a separator) -->
+      <Group guid="guidCommand1PackageCmdSet" id="QueryToolsGroup" priority="0x0700">
+        <Parent guid="guidCommand1PackageCmdSet" id="MyTopMenu"/>
+      </Group>
+      <!-- Query editor right-click menu (SQLEditors' IDM_SQLWB_SQLSCRIPT_CONTEXT) -->
+      <Group guid="guidCommand1PackageCmdSet" id="EditorContextGroup" priority="0x0600">
+        <Parent guid="guidSQLEditorGroup" id="IDM_SQLWB_SQLSCRIPT_CONTEXT"/>
+      </Group>
+      <!-- Results grid right-click menu (SQLEditors' IDM_SQLWB_SQLRESGRID_CONTEXT) -->
+      <Group guid="guidCommand1PackageCmdSet" id="GridContextGroup" priority="0x0700">
+        <Parent guid="guidSQLEditorGroup" id="IDM_SQLWB_SQLRESGRID_CONTEXT"/>
+      </Group>
+      <Group guid="guidCommand1PackageCmdSet" id="GridCopyGroup" priority="0x0100">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridSubMenu"/>
+      </Group>
+      <Group guid="guidCommand1PackageCmdSet" id="GridAggregatesGroup" priority="0x0200">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridSubMenu"/>
+      </Group>
     </Groups>
 
     <Menus>
       <Menu guid="guidCommand1PackageCmdSet" id="MyTopMenu" priority="0x0900" type="Menu">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_TOOLS_EXT_TOOLS"/>
+        <Strings>
+          <ButtonText>SSMS Plus</ButtonText>
+        </Strings>
+      </Menu>
+      <Menu guid="guidCommand1PackageCmdSet" id="GridSubMenu" priority="0x0100" type="Menu">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridContextGroup"/>
         <Strings>
           <ButtonText>SSMS Plus</ButtonText>
         </Strings>
@@ -86,9 +113,92 @@
       </Button>
       <Button guid="guidCommand1PackageCmdSet" id="PreferencesCmd" priority="0x0100" type="Button">
         <Parent guid="guidCommand1PackageCmdSet" id="MyMenuGroup" />
+        <Icon guid="ImageCatalogGuid" id="StatusInformation" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
         <Strings>
           <ButtonText>About SSMSPlus</ButtonText>
           <CanonicalName>SSMSPlus.AboutSSMSPlus</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="ExecuteCurrentStatementCmd" priority="0x0100" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="QueryToolsGroup" />
+        <Icon guid="ImageCatalogGuid" id="Execute" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <CommandFlag>DynamicVisibility</CommandFlag>
+        <Strings>
+          <ButtonText>Execute Current Statement</ButtonText>
+          <ToolTipText>Execute only the statement under the cursor (Ctrl+Shift+E)</ToolTipText>
+          <CanonicalName>SSMSPlus.ExecuteCurrentStatement</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="CopyAsInsertCmd" priority="0x0100" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridCopyGroup" />
+        <Icon guid="ImageCatalogGuid" id="ModifyQueryInsertValues" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Copy as INSERT</ButtonText>
+          <ToolTipText>Copy the selected cells (or the whole grid) as CREATE TABLE + INSERT statements</ToolTipText>
+          <CanonicalName>SSMSPlus.CopyAsInsert</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="CopyAsCsvCmd" priority="0x0110" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridCopyGroup" />
+        <Icon guid="ImageCatalogGuid" id="DataTable" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Copy as CSV</ButtonText>
+          <ToolTipText>Copy the selected cells (or the whole grid) as CSV with headers</ToolTipText>
+          <CanonicalName>SSMSPlus.CopyAsCsv</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="CopyAsJsonCmd" priority="0x0120" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridCopyGroup" />
+        <Icon guid="ImageCatalogGuid" id="JSONScript" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Copy as JSON</ButtonText>
+          <ToolTipText>Copy the selected cells (or the whole grid) as a JSON array</ToolTipText>
+          <CanonicalName>SSMSPlus.CopyAsJson</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="SelectionAggregatesCmd" priority="0x0100" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="GridAggregatesGroup" />
+        <Icon guid="ImageCatalogGuid" id="AutoSum" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Selection Aggregates...</ButtonText>
+          <ToolTipText>Count, Sum, Avg, Min, Max and Distinct per column for the selected cells</ToolTipText>
+          <CanonicalName>SSMSPlus.SelectionAggregates</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="PlanTreeEstimatedCmd" priority="0x0200" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="QueryToolsGroup" />
+        <Icon guid="ImageCatalogGuid" id="Plan" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Execution Plan Tree (Estimated)</ButtonText>
+          <ToolTipText>Show the estimated plan of the query as a tree (nothing is executed)</ToolTipText>
+          <CanonicalName>SSMSPlus.ExecutionPlanTreeEstimated</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="PlanTreeActualCmd" priority="0x0210" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="QueryToolsGroup" />
+        <Icon guid="ImageCatalogGuid" id="ClientStatistics" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Execution Plan Tree (Actual)</ButtonText>
+          <ToolTipText>Execute the query and show the actual plan as a tree (changes are rolled back)</ToolTipText>
+          <CanonicalName>SSMSPlus.ExecutionPlanTreeActual</CanonicalName>
+        </Strings>
+      </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="PlanTreeWindowCmd" priority="0x0150" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="MyMenuGroup" />
+        <Icon guid="ImageCatalogGuid" id="Hierarchy" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Execution Plan Tree</ButtonText>
+          <ToolTipText>Open the execution plan tree window (or show the plan XML of the active document)</ToolTipText>
+          <CanonicalName>SSMSPlus.ExecutionPlanTree</CanonicalName>
         </Strings>
       </Button>
     </Buttons>
@@ -106,13 +216,39 @@
     </Bitmaps>
   </Commands>
 
+  <CommandPlacements>
+    <!-- Also in the generic code editor context menu (other text editors) -->
+    <CommandPlacement guid="guidCommand1PackageCmdSet" id="EditorContextGroup" priority="0x0600">
+      <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_CODEWIN"/>
+    </CommandPlacement>
+    <CommandPlacement guid="guidCommand1PackageCmdSet" id="ExecuteCurrentStatementCmd" priority="0x0100">
+      <Parent guid="guidCommand1PackageCmdSet" id="EditorContextGroup"/>
+    </CommandPlacement>
+    <CommandPlacement guid="guidCommand1PackageCmdSet" id="PlanTreeEstimatedCmd" priority="0x0200">
+      <Parent guid="guidCommand1PackageCmdSet" id="EditorContextGroup"/>
+    </CommandPlacement>
+    <CommandPlacement guid="guidCommand1PackageCmdSet" id="PlanTreeActualCmd" priority="0x0210">
+      <Parent guid="guidCommand1PackageCmdSet" id="EditorContextGroup"/>
+    </CommandPlacement>
+  </CommandPlacements>
+
   <KeyBindings>
     <KeyBinding guid="guidCommand1PackageCmdSet" id="SchemaSearchCmd" editor="guidVSStd97" key1="0xBC" mod1="Control Alt" />
     <KeyBinding guid="guidCommand1PackageCmdSet" id="ExecutionHistoryCmd" editor="guidVSStd97" key1="h" mod1="Control Alt" />
     <KeyBinding guid="guidCommand1PackageCmdSet" id="DocumentViewerCmd" editor="guidVSStd97" key1="e" mod1="Control Alt" />
+    <KeyBinding guid="guidCommand1PackageCmdSet" id="ExecuteCurrentStatementCmd" editor="guidSqlQueryEditor" key1="E" mod1="Control Shift" />
   </KeyBindings>
 
   <Symbols>
+    <!-- SSMS query editor (key binding scope) -->
+    <GuidSymbol name="guidSqlQueryEditor" value="{B5A506EB-11BE-4782-9A18-21265C2CA0B4}" />
+
+    <!-- SQLEditors command set; IDM_SQLWB_SQLRESGRID_CONTEXT is the results grid context menu -->
+    <GuidSymbol name="guidSQLEditorGroup" value="{33F13AC3-80BB-4ecb-85BC-225435603A5E}">
+      <IDSymbol name="IDM_SQLWB_SQLSCRIPT_CONTEXT" value="0x0050" />
+      <IDSymbol name="IDM_SQLWB_SQLRESGRID_CONTEXT" value="0x0070" />
+    </GuidSymbol>
+
     <GuidSymbol name="guidTextEditor" value="{8B382828-6202-11d1-8870-0000F87579D2}" />
 
     <!-- This is the package guid. -->
@@ -126,6 +262,20 @@
       <IDSymbol name="SchemaSearchCmd" value="1101"  />
       <IDSymbol name="DocumentViewerCmd" value="1201"  />
       <IDSymbol name="PreferencesCmd" value="2001"  />
+      <IDSymbol name="QueryToolsGroup" value="0x1030" />
+      <IDSymbol name="EditorContextGroup" value="0x1040" />
+      <IDSymbol name="GridContextGroup" value="0x1050" />
+      <IDSymbol name="GridSubMenu" value="0x1060" />
+      <IDSymbol name="GridCopyGroup" value="0x1070" />
+      <IDSymbol name="GridAggregatesGroup" value="0x1080" />
+      <IDSymbol name="ExecuteCurrentStatementCmd" value="3001" />
+      <IDSymbol name="CopyAsInsertCmd" value="3101" />
+      <IDSymbol name="CopyAsCsvCmd" value="3102" />
+      <IDSymbol name="CopyAsJsonCmd" value="3103" />
+      <IDSymbol name="SelectionAggregatesCmd" value="3104" />
+      <IDSymbol name="PlanTreeEstimatedCmd" value="3201" />
+      <IDSymbol name="PlanTreeActualCmd" value="3202" />
+      <IDSymbol name="PlanTreeWindowCmd" value="3203" />
     </GuidSymbol>
 
     <GuidSymbol name="timeback" value="{0c6e5c94-f934-4bac-acf9-e56653df5110}">

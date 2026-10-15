@@ -37,6 +37,8 @@ namespace SSMSPlus
 
         private Microsoft.Extensions.DependencyInjection.ServiceProvider _serviceProvider;
         private static IConfigurationRoot _configuration;
+        private static Features.QueryToolsCommands _queryTools;
+        private static Features.ExecutionPlan.PlanCommands _planCommands;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Command1"/> class.
@@ -66,6 +68,9 @@ namespace SSMSPlus
                 _serviceProvider.GetRequiredService<SearchPlugin>().Register();
                 _serviceProvider.GetRequiredService<DocumentPlugin>().Register();
                 _serviceProvider.GetRequiredService<PreferencesUI>().Register();
+
+                _queryTools = Features.QueryToolsCommands.Register(_dte, _commandService);
+                _planCommands = Features.ExecutionPlan.PlanCommands.Register(_asyncPackage, _dte, _commandService);
             }
             catch (Exception ex)
             {

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\Microsoft.VSSDK.BuildTools.17.0.5232\build\Microsoft.VSSDK.BuildTools.props" Condition="Exists('..\packages\Microsoft.VSSDK.BuildTools.17.0.5232\build\Microsoft.VSSDK.BuildTools.props')" />
   <PropertyGroup>
@@ -66,6 +66,20 @@
   <ItemGroup>
     <Compile Include="Command1.cs" />
     <Compile Include="Command1Package.cs" />
+    <Compile Include="Features\ExecuteStatement\StatementExecutor.cs" />
+    <Compile Include="Features\ExecutionPlan\PlanCommands.cs" />
+    <Compile Include="Features\ExecutionPlan\PlanLayout.cs" />
+    <Compile Include="Features\ExecutionPlan\PlanRunner.cs" />
+    <Compile Include="Features\ExecutionPlan\PlanToolWindow.cs" />
+    <Compile Include="Features\ExecutionPlan\PlanTreeCanvas.cs" />
+    <Compile Include="Features\ExecutionPlan\PlanViewerControl.cs" />
+    <Compile Include="Features\ExecutionPlan\QueryWindowConnection.cs" />
+    <Compile Include="Features\ExecutionPlan\ShowPlanModel.cs" />
+    <Compile Include="Features\QueryToolsCommands.cs" />
+    <Compile Include="Features\ResultsGrid\GridAggregates.cs" />
+    <Compile Include="Features\ResultsGrid\GridAggregatesStatusBar.cs" />
+    <Compile Include="Features\ResultsGrid\GridExport.cs" />
+    <Compile Include="Features\ResultsGrid\ResultsGridAccess.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\SSMSWorkingDirProvider.cs" />
     <Compile Include="Services\VersionProvider.cs" />
@@ -126,18 +140,21 @@
     <Reference Include="Microsoft.VisualStudio.CoreUtility, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.VisualStudio.CoreUtility.15.0.26228\lib\net45\Microsoft.VisualStudio.CoreUtility.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Imaging, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.VisualStudio.Imaging.15.0.26228\lib\net45\Microsoft.VisualStudio.Imaging.dll</HintPath>
+    <Reference Include="Microsoft.VisualStudio.Imaging">
+      <HintPath>assemblies\Microsoft.VisualStudio.Imaging.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.14.3.25408\lib\net20\Microsoft.VisualStudio.Imaging.Interop.14.0.DesignTime.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Shell.15.0, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.VisualStudio.Shell.15.0.15.0.26228\lib\Microsoft.VisualStudio.Shell.15.0.dll</HintPath>
+    <Reference Include="Microsoft.VisualStudio.Shell.15.0">
+      <HintPath>assemblies\Microsoft.VisualStudio.Shell.15.0.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Shell.Framework, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.VisualStudio.Shell.Framework.15.0.26228\lib\net45\Microsoft.VisualStudio.Shell.Framework.dll</HintPath>
+    <Reference Include="Microsoft.VisualStudio.Shell.Framework">
+      <HintPath>assemblies\Microsoft.VisualStudio.Shell.Framework.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.OLE.Interop, Version=7.1.40304.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <HintPath>..\packages\Microsoft.VisualStudio.OLE.Interop.7.10.6071\lib\Microsoft.VisualStudio.OLE.Interop.dll</HintPath>
@@ -173,14 +190,17 @@
       <HintPath>..\packages\Microsoft.VisualStudio.Shell.Interop.14.0.DesignTime.14.3.25407\lib\Microsoft.VisualStudio.Shell.Interop.14.0.DesignTime.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Threading, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.VisualStudio.Threading.15.0.240\lib\net45\Microsoft.VisualStudio.Threading.dll</HintPath>
+    <Reference Include="Microsoft.VisualStudio.Threading">
+      <HintPath>assemblies\Microsoft.VisualStudio.Threading.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Utilities, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.VisualStudio.Utilities.15.0.26228\lib\net46\Microsoft.VisualStudio.Utilities.dll</HintPath>
+    <Reference Include="Microsoft.VisualStudio.Utilities">
+      <HintPath>assemblies\Microsoft.VisualStudio.Utilities.dll</HintPath>
+      <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.Validation, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.VisualStudio.Validation.15.0.82\lib\net45\Microsoft.VisualStudio.Validation.dll</HintPath>
+    <Reference Include="Microsoft.VisualStudio.Validation">
+      <HintPath>assemblies\Microsoft.VisualStudio.Validation.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -190,6 +210,15 @@
     <Reference Include="Microsoft.VisualStudio.Interop, Version=18.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <HintPath>assemblies\Microsoft.VisualStudio.Interop.dll</HintPath>
       <EmbedInteropTypes>False</EmbedInteropTypes>
+    </Reference>
+    <!-- Provided by SSMS at runtime (loaded from the SSMS folders by Command1Package.OnAssemblyResolve) -->
+    <Reference Include="Microsoft.SqlServer.GridControl">
+      <HintPath>assemblies\Microsoft.SqlServer.GridControl.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.SqlServer.TransactSql.ScriptDom">
+      <HintPath>assemblies\Microsoft.SqlServer.TransactSql.ScriptDom.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="SqlWorkbench.Interfaces">
       <HintPath>assemblies\SqlWorkbench.Interfaces.dll</HintPath>

@@ -1,13 +1,16 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.2 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.3 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
     Query Execution History
     Schema Object Search
     Document Export for binary columns
+    Execute Current Statement
+    Results grid: Copy as INSERT / CSV / JSON, selection aggregates
+    Execution Plan Tree (DB2 Visual Explain style)
 
 
 ### Table Of Contents
@@ -25,6 +28,10 @@ It extends SSMS with a handful set of features:
   * [Query History](#query-history)
   * [Schema Object Search](#schema-object-search)
   * [Documents Export](#documents-export)
+  * [Execute Current Statement](#execute-current-statement)
+  * [Results Grid Tools](#results-grid-tools)
+  * [Execution Plan Tree](#execution-plan-tree)
+- [What's new in 7.3](#whats-new-in-73)
 - [What's new in 7.2](#whats-new-in-72)
 - [What's new in 7.1](#whats-new-in-71)
 - [What's new in 7.0 (SSMS 22 support)](#whats-new-in-70-ssms-22-support)
@@ -191,6 +198,8 @@ Since version 7.0 the menu is no longer a top-level menu: it is available under 
 * Execution History (`Ctrl+Alt+H`)
 * Schema Search (`Ctrl+Alt+,`)
 * Document Export (`Ctrl+Alt+E`)
+* Execute Current Statement (`Ctrl+Shift+E` in a query window)
+* Execution Plan Tree, Execution Plan Tree (Estimated) / (Actual)
 * About SSMSPlus (version, working directory with the local database and logs, link to report an issue)
 
 ![SSMS Plus Menu](docs/illustrations/menu-screen.png?raw=true "SSMS Plus Menu")
@@ -224,6 +233,58 @@ Select a user database in Object Explorer (or open a query window connected to i
 The query is expecting two columns corresponding respectively to file name and file content (`varbinary`; text columns are exported as UTF-8).
 
 ![SSMS Plus Documents Export](docs/illustrations/document-export-screen.png?raw=true "Documents Export")
+
+## Execute Current Statement
+Executes only the T-SQL statement under the cursor, without selecting it first: press `Ctrl+Shift+E` in a query window, or right click in the editor > **Execute Current Statement** (also under **Tools > SSMS Plus**).
+
+* The statement is found with the T-SQL parser (ScriptDom) shipped with SSMS, so multi-line statements, `GO` batches, `IF` / `BEGIN ... END` blocks and CTEs are handled; the whole block containing the cursor is executed.
+* If text is selected, the selection is executed as usual.
+* If the script has syntax errors, nothing is executed and SSMS shows the error (Parse).
+* The cursor and selection are restored after the execution starts.
+
+If `Ctrl+Shift+E` is already used by another extension, change it in **Tools > Options > Environment > Keyboard** (command `SSMSPlus.ExecuteCurrentStatement`).
+
+## Results Grid Tools
+Right click in a results grid > **SSMS Plus**:
+
+* **Copy as INSERT** - `CREATE TABLE #Results` with the column types of the result set, followed by `INSERT ... VALUES` statements (1000 rows per statement). NULLs, numbers, binary values and quotes are handled.
+* **Copy as CSV** - comma separated, with a header row; values are quoted when needed.
+* **Copy as JSON** - an array of objects; numbers, `bit` (true / false) and NULL keep their JSON types.
+* **Selection Aggregates...** - Count, NULL count, Distinct, Sum, Avg, Min and Max per selected column.
+
+The copy commands use the selected cells (several blocks are combined into their rows and columns, in the order the columns are displayed). When a single cell is selected, the whole grid is copied. Values are the ones shown in the grid, so very long text is limited by the SSMS option *Maximum Characters Retrieved*.
+
+**Status bar aggregates**: when two or more cells are selected in a results grid, the SSMS status bar shows `Count`, `Sum`, `Avg`, `Min` and `Max` (like Excel). Only numeric columns are summed; selections over 500,000 cells are not computed.
+
+## Execution Plan Tree
+A different view of the execution plan, inspired by DB2 Visual Explain: the plan is drawn as a tree from top to bottom (the statement at the top, tables and indexes as leaves at the bottom) and every node shows its numbers without hovering.
+
+How to open it:
+* Right click in a query window > **Execution Plan Tree (Estimated)**: the plan of the selected text (or the whole script) is requested with `SET SHOWPLAN_XML ON`; nothing is executed.
+* **Execution Plan Tree (Actual)**: the query is executed with `SET STATISTICS XML ON` inside a transaction that is always rolled back. When the script is not only `SELECT`s, a confirmation is shown first (statements that commit by themselves cannot be rolled back).
+* **Tools > SSMS Plus > Execution Plan Tree** opens the window; if the active document is a plan XML (SSMS: right click a graphical plan > *Show Execution Plan XML...*) or a `.sqlplan` file, that plan is shown.
+* In the window: *Open .sqlplan...* and *Paste XML* (a plan XML copied to the clipboard).
+
+The plan is requested on a separate connection to the server and database of the query window (Windows or SQL Server authentication). For Microsoft Entra connections use SSMS's own plan (`Ctrl+L` / `Ctrl+M`), then *Show Execution Plan XML* and open it in the tree.
+
+What the tree shows:
+* Operators are octagons colored by family (scan, seek, lookup, join, sort, aggregate, spool / temp, parallelism, other), the statement is an ellipse, indexes are hexagons and tables are rectangles.
+* Each operator shows its node id, the cumulative (subtree) cost with the operator's own share in %, and the estimated → actual rows.
+* Red border: the operator costs 25% or more of the statement, orange: 10% or more. ⚠ marks warnings: spills to tempdb, row estimates off by 10x or more, implicit conversions, missing statistics, no join predicate, memory grant warnings, missing indexes.
+* Edges get thicker with the number of rows; an overview map, zoom (`Ctrl` + mouse wheel, Fit, 100%) and a color legend help with large plans.
+* Clicking a node shows all its properties on the right (costs, I/O, CPU, rows, executions, logical reads, seek predicates, predicates, output columns, warnings).
+* The *Operators* tab lists the operators sorted by cost (double click to find a node in the tree); the *XML* tab shows the plan XML.
+* When the optimizer suggests a missing index, *Copy missing index* copies the `CREATE INDEX` statement.
+
+# What's new in 7.3
+
+* **Execute Current Statement** (`Ctrl+Shift+E`): runs the statement under the cursor, see [Execute Current Statement](#execute-current-statement). Based on the idea and statement detection of [SSMS Executor](https://github.com/tkwj/ssms-executor) (MIT).
+* **Execution Plan Tree**: a DB2 Visual Explain style view of estimated and actual plans, see [Execution Plan Tree](#execution-plan-tree).
+* **Results grid tools**: Copy as INSERT / CSV / JSON and Selection Aggregates in the results grid context menu, plus Excel-like aggregates in the status bar, see [Results Grid Tools](#results-grid-tools). Grid selection handling adapted from [SQLExtended](https://github.com/jamtheradar/SQLExtended) (MIT).
+* New compile-time references from SSMS 22 in `src/SSMSPlus/assemblies`: `Microsoft.SqlServer.GridControl` and `Microsoft.SqlServer.TransactSql.ScriptDom` (not shipped in the VSIX; loaded from the SSMS folders at runtime).
+* Menus: the new commands are in **Tools > SSMS Plus**, in the query editor right-click menu (SQLEditors' `IDM_SQLWB_SQLSCRIPT_CONTEXT`) and in the results grid right-click menu (**SSMS Plus** submenu); they use theme-aware icons from the Visual Studio image catalog (KnownMonikers). The menu resource version was bumped so SSMS loads them; after an update run `install-ssms22.cmd` as administrator (it runs `SSMS.exe /updateconfiguration`).
+* Removed the obsolete `InstalledProductRegistration` attribute and the old binding redirects to 15.0 from `app.config`; fixed the VS threading analyzer warnings (VSTHRD010 / VSTHRD001 / VSTHRD103, VSSDK006).
+* Build: the Visual Studio SDK assemblies (`Shell.15.0`, `Shell.Framework`, `Imaging`, `Threading`, `Utilities`, `Validation`) are now referenced from SSMS 22 (`src/SSMSPlus/assemblies`) instead of the old 15.0 NuGet packages, which removes the MSB3277 version conflict warnings; they are not shipped in the VSIX (SSMS provides them).
 
 # What's new in 7.2
 
