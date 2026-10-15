@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.4 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.5 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -33,6 +33,7 @@ It extends SSMS with a handful set of features:
   * [Results Grid Tools](#results-grid-tools)
   * [Execution Plan Tree](#execution-plan-tree)
   * [Blocking Monitor](#blocking-monitor)
+- [What's new in 7.5](#whats-new-in-75)
 - [What's new in 7.4](#whats-new-in-74)
 - [What's new in 7.3](#whats-new-in-73)
 - [What's new in 7.2](#whats-new-in-72)
@@ -218,6 +219,8 @@ Every time you execute a query through the editor, SSMS Plus will save that quer
 
 Open it from **Tools > SSMS Plus > Execution History** (`Ctrl+Alt+H`). Double click a row (or right click > *Open script*) to open the query in a new editor.
 
+The query preview uses the SSMS text editor font (family and size from *Tools > Options > Environment > Fonts and Colors > Text Editor*) and can be zoomed like a query window: `Ctrl` + mouse wheel, `Ctrl+Shift+.` / `Ctrl+Shift+,`, `Ctrl+0` to reset, or right click > *Zoom In / Zoom Out / Reset Zoom*. The zoom level is remembered.
+
 ![SSMS Plus Query History](docs/illustrations/history-screen.png?raw=true "Query History")
 
 ## Schema Object Search
@@ -291,6 +294,10 @@ Shows who blocks whom right now: **Tools > SSMS Plus > Blocking Monitor** opens 
 * Auto refresh (off, 2, 5, 10, 30 s; only while the window is visible) and F5.
 * Read-only: it only queries the DMVs (`sys.dm_exec_sessions`, `sys.dm_exec_requests`, `sys.dm_exec_connections`, `sys.dm_tran_session_transactions`, `sys.dm_tran_active_transactions`, `sys.dm_exec_sql_text`); nothing is installed on the server.
 * Permissions: without `VIEW SERVER STATE` (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022+) SQL Server returns only your own session, so blocking by other users is not visible; the window shows a warning in that case. `sysadmin` logins (for example `sa`) see everything. On Azure SQL Database only the sessions of the current database are visible.
+
+# What's new in 7.5
+
+* **Execution History**: the query preview follows the SSMS text editor font and size, and can be zoomed (`Ctrl` + mouse wheel, `Ctrl+Shift+.` / `Ctrl+Shift+,`, `Ctrl+0`, context menu); the zoom level is remembered.
 
 # What's new in 7.4
 

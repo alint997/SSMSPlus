@@ -133,6 +133,7 @@
                                HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                                Background="{DynamicResource {x:Static vsui:CommonControlsColors.TextBoxBackgroundBrushKey}}"
                                Foreground="{DynamicResource {x:Static vsui:CommonControlsColors.TextBoxTextBrushKey}}"
+                               ext:EditorZoomBehavior.ZoomKey="ExecutionHistory"
                                ext:SqlEditorHighlightBehavior.HighlightContext="{Binding SelectedItem.QueryHighlight}" />
 
             <GridSplitter Grid.Row="1">

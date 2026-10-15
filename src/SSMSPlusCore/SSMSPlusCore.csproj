@@ -238,6 +238,7 @@
     <Compile Include="Ui\Converters\HighlightToTextBlockConverter.cs" />
     <Compile Include="Ui\EmptyAutomationPeer.cs" />
     <Compile Include="Ui\Extensions\FlowDocumentScrollViewerDocumentBehavior.cs" />
+    <Compile Include="Ui\Extensions\EditorZoomBehavior.cs" />
     <Compile Include="Ui\Extensions\SqlEditorHighlightBehavior.cs" />
     <Compile Include="Ui\Extensions\GridExtensions.cs" />
     <Compile Include="Ui\Extensions\RichTextBoxHelper.cs" />
