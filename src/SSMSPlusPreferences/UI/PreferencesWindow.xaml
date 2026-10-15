@@ -27,15 +27,15 @@
 
                     <TextBlock Grid.Row="1" Text="Working Directory:"  />
                     <TextBlock Grid.Row="1" Grid.Column="1" Margin="40,0,0,10">
-                        <Hyperlink Command="{Binding OpenWorkingDirCmd}"  >
-                           <TextBlock Text="{Binding WorkingDirPath}"></TextBlock> 
+                        <Hyperlink Command="{Binding OpenWorkingDirCmd}" ToolTip="Open the folder (database and logs)">
+                           <Run Text="{Binding WorkingDirPath, Mode=OneWay}" />
                         </Hyperlink>
                     </TextBlock>
 
                     <TextBlock Grid.Row="2" Text="{Binding DistributionSettings.ContributeText}"  />
                     <TextBlock Grid.Row="2" Grid.Column="1" Margin="40,0,0,10">
                         <Hyperlink Command="{Binding OpenContributeCmd}"  >
-                           <TextBlock Text="{Binding DistributionSettings.ContributeUrl}"></TextBlock> 
+                           <Run Text="{Binding DistributionSettings.ContributeUrl, Mode=OneWay}" />
                         </Hyperlink>
                     </TextBlock>
                 </Grid>

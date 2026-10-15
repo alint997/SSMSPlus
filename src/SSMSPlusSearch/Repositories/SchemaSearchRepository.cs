@@ -94,8 +94,8 @@ DELETE  FROM 'SchemaSearch.Dbs' WHERE dbid = @dbid;";
 
             Dictionary<long, DbObject> dbobjecstByID = dbObjects.ToDictionary(p => p.ObjectId);
             MapDbObjectParents(dbobjecstByID);
-            MapdbColumnsParents(dbobjecstByID, dbColumns);
-            MapdbIndicesParents(dbobjecstByID, dbIndices);
+            dbColumns = MapdbColumnsParents(dbobjecstByID, dbColumns);
+            dbIndices = MapdbIndicesParents(dbobjecstByID, dbIndices);
             MapIndicesColumns(dbIndices, dbIndicesColumns);
 
             var dbColumnsByTableId = dbColumns.ToLookup(p => p.TableId);
@@ -148,25 +148,38 @@ DELETE  FROM 'SchemaSearch.Dbs' WHERE dbid = @dbid;";
         {
             foreach (var obj in dbobjecstByID.Values)
             {
-                if (obj.ParentObjectId.HasValue)
-                    obj.Parent = dbobjecstByID[obj.ParentObjectId.Value];
+                // orphan parents (not indexed, e.g. ms_shipped) are ignored instead of throwing KeyNotFoundException (upstream issue #15)
+                if (obj.ParentObjectId.HasValue && dbobjecstByID.TryGetValue(obj.ParentObjectId.Value, out var parent))
+                    obj.Parent = parent;
             }
         }
 
-        private void MapdbColumnsParents(Dictionary<long, DbObject> dbobjecstByID, DbColumn[] dbColumns)
+        private DbColumn[] MapdbColumnsParents(Dictionary<long, DbObject> dbobjecstByID, DbColumn[] dbColumns)
         {
+            var mapped = new List<DbColumn>(dbColumns.Length);
             foreach (var column in dbColumns)
             {
-                column.Parent = dbobjecstByID[column.TableId];
+                if (dbobjecstByID.TryGetValue(column.TableId, out var parent))
+                {
+                    column.Parent = parent;
+                    mapped.Add(column);
+                }
             }
+            return mapped.ToArray();
         }
 
-        private void MapdbIndicesParents(Dictionary<long, DbObject> dbobjecstByID, DbIndex[] dbIndices)
+        private DbIndex[] MapdbIndicesParents(Dictionary<long, DbObject> dbobjecstByID, DbIndex[] dbIndices)
         {
+            var mapped = new List<DbIndex>(dbIndices.Length);
             foreach (var index in dbIndices)
             {
-                index.Parent = dbobjecstByID[index.OwnerId];
+                if (dbobjecstByID.TryGetValue(index.OwnerId, out var parent))
+                {
+                    index.Parent = parent;
+                    mapped.Add(index);
+                }
             }
+            return mapped.ToArray();
         }
     }
 }

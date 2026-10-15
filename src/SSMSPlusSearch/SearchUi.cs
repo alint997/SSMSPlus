@@ -46,10 +46,9 @@
                 cnx = _dbConnectionProvider.GetFromActiveConnection();
                 if (cnx == null)
                 {
-                    System.Windows.MessageBox.Show(
-@"Please select a user database in object explorer
-Or 
-Connect to a user database", "SSMS plus");
+                    SSMSPlusCore.Ui.Dialogs.SsmsPlusMessageBox.ShowInfo(
+                        "No user database selected",
+                        "Select a user database in Object Explorer, or open a query window connected to a user database, then try again.");
                     return;
                 }
             }

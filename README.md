@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.0 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.1 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -25,6 +25,7 @@ It extends SSMS with a handful set of features:
   * [Query History](#query-history)
   * [Schema Object Search](#schema-object-search)
   * [Documents Export](#documents-export)
+- [What's new in 7.1](#whats-new-in-71)
 - [What's new in 7.0 (SSMS 22 support)](#whats-new-in-70-ssms-22-support)
 - [Contributing](#contributing)
   * [How can I contribute ?](#how-can-i-contribute--)
@@ -39,7 +40,7 @@ It extends SSMS with a handful set of features:
 
 # Getting started
 ## Prerequisites
-* SQL Server Management Studio 21 / 22 (64-bit) for version 7.0
+* SQL Server Management Studio 21 / 22 (64-bit) for version 7.x
 * To build from source: Visual Studio 2022 or newer with the **Visual Studio extension development** workload and .NET Framework 4.8
 
 ## Download
@@ -54,17 +55,21 @@ Get the latest build from the [Releases](https://github.com/alint997/SSMSPlus/re
 
 You can also build it yourself, see [Build](#build) and [Install](#install).
 
-### For SSMS 20
+### For SSMS 20 / 19 / 18
+
+These older versions are only available on the original repository ([akarzazi/SSMSPlus](https://github.com/akarzazi/SSMSPlus)):
+
+#### SSMS 20
 
 Get this release:
 https://github.com/akarzazi/SSMSPlus/releases/tag/6.0
 
-### For SSMS 19
+#### SSMS 19
 
 Get this release:
 https://github.com/akarzazi/SSMSPlus/releases/tag/5.0
 
-### For SSMS 18
+#### SSMS 18
 
 Get this release:
 https://github.com/akarzazi/SSMSPlus/releases/tag/4.0
@@ -161,7 +166,7 @@ The VSIX installer puts the extension in `%LocalAppData%\Microsoft\SSMS\22.0_<id
 
 ### SSMS 21
 
-Same steps, using the SSMS 21 folder, e.g. `C:\Program Files\Microsoft SQL Server Management Studio 21\Release\Common7\IDE` (pass it as parameter to `install-ssms22.cmd`). SSMS 21 has not been tested with version 7.0.
+Same steps, using the SSMS 21 folder, e.g. `C:\Program Files\Microsoft SQL Server Management Studio 21\Release\Common7\IDE` (pass it as parameter to `install-ssms22.cmd`). SSMS 21 has not been tested with version 7.x.
 
 ### Check the installation
 
@@ -180,12 +185,12 @@ If something goes wrong, see [Troubleshooting](#troubleshooting).
 Your query history and search indexes are kept (they are stored in `%LocalAppData%\SSMS Plus\SSMS-Plus.sqlite`, not in the extension folder).
 
 ## Launch
-The menu is available under **Tools > SSMS Plus**:
+Since version 7.0 the menu is no longer a top-level menu: it is available under **Tools > SSMS Plus** (between *Code Snippets Manager...* and *External Tools...*):
 
 * Execution History (`Ctrl+Alt+H`)
 * Schema Search (`Ctrl+Alt+,`)
 * Document Export (`Ctrl+Alt+E`)
-* About SSMSPlus
+* About SSMSPlus (version, working directory with the local database and logs, link to report an issue)
 
 ![SSMS Plus Menu](docs/illustrations/menu-screen.png?raw=true "SSMS Plus Menu")
 
@@ -197,7 +202,7 @@ If the menu does not show up after an install or update, close SSMS and run `SSM
 
 Every time you execute a query through the editor, SSMS Plus will save that query.
 
-You'll find your query history through the main menu
+Open it from **Tools > SSMS Plus > Execution History** (`Ctrl+Alt+H`). Double click a row (or right click > *Open script*) to open the query in a new editor.
 
 ![SSMS Plus Query History](docs/illustrations/history-screen.png?raw=true "Query History")
 
@@ -205,15 +210,35 @@ You'll find your query history through the main menu
 
 Use this tool to find quickly any user object in the database.
 
+Select a user database in Object Explorer (or open a query window connected to it), then use **Tools > SSMS Plus > Schema Search** (`Ctrl+Alt+,`).
+
 ![SSMS Plus Schema Object Search](docs/illustrations/schema-search-screen.png?raw=true "Schema Object Search")
 
 ## Documents Export
 
 This tool is handy when you want to preview or export files from the database.
 
-The query is expecting two columns corresponding respectively to file name and file content.
+Select a user database in Object Explorer (or open a query window connected to it), then use **Tools > SSMS Plus > Document Export** (`Ctrl+Alt+E`).
+
+The query is expecting two columns corresponding respectively to file name and file content (`varbinary`; text columns are exported as UTF-8).
 
 ![SSMS Plus Documents Export](docs/illustrations/document-export-screen.png?raw=true "Documents Export")
+
+# What's new in 7.1
+
+**Fixes for issues reported on the original repository ([akarzazi/SSMSPlus](https://github.com/akarzazi/SSMSPlus/issues))**
+* #16 / #26 - Ctrl+C (and Ctrl+X / Ctrl+V / Ctrl+A) inside the SSMS Plus tool windows no longer fails with *"Unsaved documents cannot be cut or copied to the clipboard from the Miscellaneous Files project"*: the tool windows now handle the shell clipboard commands themselves.
+* #31 - Document Export: text columns are exported as UTF-8 files instead of failing with *"Unable to cast object of type 'System.String' to type 'System.Byte[]'"*; NULL contents are skipped with a warning.
+* #15 - Schema Search: objects, columns or indexes whose parent is not indexed are ignored instead of throwing `KeyNotFoundException`.
+* #4 - Query History: the query preview uses AvalonEdit with **T-SQL syntax highlighting** and line numbers; search matches are still highlighted in gold.
+* About window: shows the extension version (7.1) and links to this fork for issues; messages use a dialog that follows the SSMS theme instead of the plain Windows message box.
+
+**Other changes**
+* The menu location (**Tools > SSMS Plus**) and the shortcuts are documented in [Launch](#launch); new menu screenshot.
+* The VSIX publisher and the *More info* link point to this fork (`alint997/SSMSPlus`).
+* New NuGet package: `AvalonEdit` 6.3.1.120 (query preview editor).
+* Removed the unused `e_sqlite3.dll` files (left over from Microsoft.Data.Sqlite).
+* GitHub Actions updated to Node.js 24 based actions (`checkout@v5`, `upload-artifact@v6`, `action-gh-release@v3`).
 
 # What's new in 7.0 (SSMS 22 support)
 
@@ -230,6 +255,10 @@ The query is expecting two columns corresponding respectively to file name and f
 * SSMS 22.10+ redirects every `SQLitePCLRaw` version to its own 3.x build (see `SSMS.exe.config`), which broke `Microsoft.Data.Sqlite` inside the extension (*"Method not found: SQLitePCL.ISQLite3Provider.sqlite3_win32_set_directory"*).
 * The local store now uses **System.Data.SQLite 1.0.119** (outside the version range SSMS redirects). `SQLite.Interop.dll` is shipped in the `x64` / `x86` sub-folders of the extension.
 * The database file (`%LocalAppData%\SSMS Plus\SSMS-Plus.sqlite`) and its date format are unchanged, existing history and search indexes are kept.
+
+**Fixes for issues reported on the original repository (akarzazi/SSMSPlus)**
+* #24 - Query History: tracking errors are now logged with the full exception.
+* #33 - SSMS 22 load failure (`EnvDTE ... BeforeExecuteEventHandler..ctor`), #32 - SSMS 21 support.
 
 **NuGet packages updated (security)**
 * `System.Security.Cryptography.Xml` 4.5.0 → 10.0.13 (4.5.0 is affected by CVE-2022-34716; 10.0.8 – 10.0.12 are also flagged on nuget.org).

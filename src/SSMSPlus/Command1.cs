@@ -69,7 +69,9 @@ namespace SSMSPlus
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.GetFullStackTraceWithMessage(), "Could not Load SSMSPlus");
+                SSMSPlusCore.Ui.Dialogs.SsmsPlusMessageBox.ShowError(
+                    "SSMS Plus could not be loaded",
+                    ex.GetFullStackTraceWithMessage() + Environment.NewLine + Environment.NewLine + "Log folder: %LocalAppData%\\SSMS Plus\\log");
                 _serviceProvider.GetRequiredService<ILogger<Command1>>().LogCritical(ex, "Critical Error when starting pluging");
 
                 throw;

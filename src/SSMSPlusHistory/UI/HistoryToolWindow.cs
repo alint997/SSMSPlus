@@ -19,5 +19,13 @@ namespace SSMSPlusHistory.UI
             // the object returned by the Content property.
             this.Content = new HistoryControl();
         }
+
+        protected override void Initialize()
+        {
+            base.Initialize();
+            // Ctrl+C / Ctrl+V / Ctrl+X / Ctrl+A inside the tool window (upstream issues #16, #26)
+            SSMSPlusCore.Integration.ToolWindowClipboardCommands.Register(
+                GetService(typeof(System.ComponentModel.Design.IMenuCommandService)) as OleMenuCommandService);
+        }
     }
 }

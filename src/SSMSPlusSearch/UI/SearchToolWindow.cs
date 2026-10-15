@@ -28,6 +28,14 @@ namespace SSMSPlusSearch.UI
             this.Content = new SchemaSearchControl();
         }
 
+        protected override void Initialize()
+        {
+            base.Initialize();
+            // Ctrl+C / Ctrl+V / Ctrl+X / Ctrl+A inside the tool window (upstream issues #16, #26)
+            SSMSPlusCore.Integration.ToolWindowClipboardCommands.Register(
+                GetService(typeof(System.ComponentModel.Design.IMenuCommandService)) as OleMenuCommandService);
+        }
+
         public void Intialize(DbConnectionString cnxStr)
         {
             this.Caption = "Schema Search: " + cnxStr.Database;

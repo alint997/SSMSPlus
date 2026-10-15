@@ -1,9 +1,9 @@
 name: Build and release (SSMS 22)
 
 # Builds the extension on every push to master / pull request (artifact only)
-# and publishes a GitHub release when a tag like v7.0 is pushed:
-#     git tag v7.0
-#     git push origin v7.0
+# and publishes a GitHub release when a tag like v7.1 is pushed:
+#     git tag v7.1
+#     git push origin v7.1
 
 on:
   push:
@@ -21,14 +21,14 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build (Release)
         shell: cmd
         run: call build.cmd Release
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: SSMSPlus-ssms22
           path: |
@@ -37,7 +37,7 @@ jobs:
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: SSMS Plus ${{ github.ref_name }} - SSMS 21 / 22
           files: |

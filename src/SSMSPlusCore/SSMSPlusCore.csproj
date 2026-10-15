@@ -154,7 +154,11 @@
     <Reference Include="System.ValueTuple">
       <HintPath>..\packages\System.ValueTuple.4.6.2\lib\net462\System.ValueTuple.dll</HintPath>
     </Reference>
+    <Reference Include="ICSharpCode.AvalonEdit">
+      <HintPath>..\packages\AvalonEdit.6.3.1.120\lib\net462\ICSharpCode.AvalonEdit.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Design" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
@@ -199,6 +203,7 @@
     <Compile Include="Integration\ObjectExplorer\ObjectExplorerHelper.cs" />
     <Compile Include="Integration\ObjectExplorer\ObjectExplorerServer.cs" />
     <Compile Include="Integration\PackageProvider.cs" />
+    <Compile Include="Integration\ToolWindowClipboardCommands.cs" />
     <Compile Include="Integration\ServiceCacheIntegration.cs" />
     <Compile Include="Messaging\ReportMessage.cs" />
     <Compile Include="Messaging\ReportMessageLevel.cs" />
@@ -227,6 +232,7 @@
     <Compile Include="Ui\Converters\HighlightToTextBlockConverter.cs" />
     <Compile Include="Ui\EmptyAutomationPeer.cs" />
     <Compile Include="Ui\Extensions\FlowDocumentScrollViewerDocumentBehavior.cs" />
+    <Compile Include="Ui\Extensions\SqlEditorHighlightBehavior.cs" />
     <Compile Include="Ui\Extensions\GridExtensions.cs" />
     <Compile Include="Ui\Extensions\RichTextBoxHelper.cs" />
     <Compile Include="Ui\Extensions\RunExtensions.cs" />
@@ -237,6 +243,7 @@
     <Compile Include="Ui\Search\TextFragments.cs" />
     <Compile Include="Ui\Search\TextFragmentType.cs" />
     <Compile Include="Ui\Search\TextSearchHelper.cs" />
+    <Compile Include="Ui\Dialogs\SsmsPlusMessageBox.cs" />
     <Compile Include="Ui\Utils\IErrorHandler.cs" />
     <Compile Include="Ui\Utils\InvertableBool.cs" />
     <Compile Include="Ui\Utils\TaskExtentions.cs" />

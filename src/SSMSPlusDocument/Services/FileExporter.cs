@@ -4,6 +4,7 @@ using SSMSPlusCore.Utils.IO;
 using System;
 using System.Data.SqlClient;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,7 +31,28 @@ namespace SSMSPlusDocument.Services
 
                                 var fileName = Convert.ToString(reader.GetValue(0));
                                 string validFileName = MakeValidFileName(progress, fileName);
-                                var bytes = (byte[])reader.GetValue(1);
+                                var content = reader.GetValue(1);
+                                byte[] bytes;
+                                if (content is byte[] binary)
+                                {
+                                    bytes = binary;
+                                }
+                                else if (content is string text)
+                                {
+                                    // text columns (varchar / nvarchar / xml as text) are written as UTF-8
+                                    bytes = Encoding.UTF8.GetBytes(text);
+                                }
+                                else if (content == null || content is DBNull)
+                                {
+                                    progress.Report(ReportMessage.Warning("Skipped (NULL content): " + validFileName));
+                                    continue;
+                                }
+                                else
+                                {
+                                    progress.Report(ReportMessage.Warning($"Skipped (unsupported type {content.GetType().Name}, expected varbinary or text): {validFileName}"));
+                                    continue;
+                                }
+
                                 var fullPath = Path.Combine(folderPath, validFileName);
                                 File.WriteAllBytes(fullPath, bytes);
 
