@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SSMSPlusCore.Ui.Controls.ComboCheckBox"
+             xmlns:vsui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="200"         
              >
@@ -68,15 +69,15 @@
                                         <Border
                                           x:Name="Border" 
                                           Grid.ColumnSpan="2"
-                                          Background="White"
-                                          BorderBrush="Black"
+                                          Background="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxBackgroundBrushKey}}"
+                                          BorderBrush="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxBorderBrushKey}}"
                                           BorderThickness="1,1,1,1" />
                                         <Border 
                                           x:Name="BorderComp" 
                                           Grid.Column="0"
                                           Margin="1" 
-                                          Background="White"
-                                          BorderBrush="Black"
+                                          Background="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxBackgroundBrushKey}}"
+                                          BorderBrush="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxBorderBrushKey}}"
                                           BorderThickness="0,0,0,0" >
                                             <TextBlock Text="{Binding Text, Mode=OneWay}" 
                                                        TextTrimming="CharacterEllipsis" 
@@ -84,11 +85,13 @@
                                                        Padding="3" >
                                                 <TextBlock.Style>
                                                     <Style TargetType="{x:Type TextBlock}">
-                                                        <Setter Property="Background" Value="White"></Setter>
+                                                        <Setter Property="Background" Value="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxBackgroundBrushKey}}"></Setter>
+                                                        <Setter Property="Foreground" Value="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxTextBrushKey}}"></Setter>
                                                         <Style.Triggers>
 
                                                             <Trigger Property="IsEnabled" Value="False">
-                                                                <Setter Property="Background"   Value="{StaticResource {x:Static SystemColors.ControlBrushKey}}"/>
+                                                                <Setter Property="Background"   Value="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxBackgroundDisabledBrushKey}}"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxTextDisabledBrushKey}}"/>
                                                             </Trigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -98,7 +101,7 @@
                                         <Path 
                                           x:Name="Arrow"
                                           Grid.Column="1"     
-                                          Fill="Black"
+                                          Fill="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxGlyphBrushKey}}"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"
                                           Data="M 0 0 L 4 4 L 8 0 Z"/>
@@ -108,7 +111,7 @@
                         </ToggleButton>
 
 
-                        <Popup 
+                        <Popup TextElement.Foreground="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxListItemTextBrushKey}}" 
                         Name="Popup"
                         Placement="Bottom"                        
                         AllowsTransparency="True" 
@@ -121,16 +124,16 @@
                                   MaxHeight="{TemplateBinding MaxDropDownHeight}">
                                 <Border 
                                     x:Name="DropDownBorder" 
-                                   BorderThickness="1" Background="White"
-                                    BorderBrush="Black"/>
+                                   BorderThickness="1" Background="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxListBackgroundBrushKey}}"
+                                    BorderBrush="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxListBorderBrushKey}}"/>
 
                                 <StackPanel  Margin="4,6,4,6" Orientation="Vertical">
-                                    <Border Padding="5" BorderThickness="0,0,0,0" BorderBrush="LightGray"  Visibility="{Binding Path=IsAllVisible, Converter={StaticResource VisibleIfTrueConverter}}">
+                                    <Border Padding="5" BorderThickness="0,0,0,0" BorderBrush="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxSeparatorBrushKey}}"  Visibility="{Binding Path=IsAllVisible, Converter={StaticResource VisibleIfTrueConverter}}">
                                         <CheckBox Content="All" IsChecked="{Binding IsAllChecked, Mode=OneWay}"                                                 
                                                   Command="{Binding CheckAllCommand}"
                                                   CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Self}}" />
                                     </Border>
-                                    <Border Height="1" Margin="10,5,10,5" Background="LightGray" Visibility="{Binding Path=IsAllVisible, Converter={StaticResource VisibleIfTrueConverter}}"/>
+                                    <Border Height="1" Margin="10,5,10,5" Background="{DynamicResource {x:Static vsui:CommonControlsColors.ComboBoxSeparatorBrushKey}}" Visibility="{Binding Path=IsAllVisible, Converter={StaticResource VisibleIfTrueConverter}}"/>
                                     <ScrollViewer SnapsToDevicePixels="True" DataContext="{Binding}"  CanContentScroll="True" MaxHeight="200">
                                         <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Local" PreviewMouseLeftButtonUp="StackPanel_MouseLeftButtonUp" />
                                     </ScrollViewer>

@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.1 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.2 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -25,6 +25,7 @@ It extends SSMS with a handful set of features:
   * [Query History](#query-history)
   * [Schema Object Search](#schema-object-search)
   * [Documents Export](#documents-export)
+- [What's new in 7.2](#whats-new-in-72)
 - [What's new in 7.1](#whats-new-in-71)
 - [What's new in 7.0 (SSMS 22 support)](#whats-new-in-70-ssms-22-support)
 - [Contributing](#contributing)
@@ -223,6 +224,12 @@ Select a user database in Object Explorer (or open a query window connected to i
 The query is expecting two columns corresponding respectively to file name and file content (`varbinary`; text columns are exported as UTF-8).
 
 ![SSMS Plus Documents Export](docs/illustrations/document-export-screen.png?raw=true "Documents Export")
+
+# What's new in 7.2
+
+* **SSMS theme support**: the SSMS Plus windows (History, Schema Search, Document Export, About, messages) use the SSMS theme colors (Light, Dark and the color themes of SSMS 22) and follow theme changes; themed buttons, check boxes, text boxes, grids, headers, scroll bars and context menus.
+* The T-SQL preview (Execution History) switches to dark editor colors on dark themes; the search matches use a darker highlight there.
+* Document Export console: normal messages use the theme text color.
 
 # What's new in 7.1
 

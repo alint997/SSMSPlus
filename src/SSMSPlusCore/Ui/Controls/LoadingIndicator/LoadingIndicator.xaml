@@ -4,10 +4,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SSMSPlusCore.Ui.Controls.LoadingIndicator"
+             xmlns:vsui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <StackPanel  Orientation="Horizontal">
-        <Rectangle   RenderTransformOrigin="0.5, 0.5" Width="16" Height="16" Fill="Black" Margin="0,0,10,0" VerticalAlignment="Center">
+        <Rectangle   RenderTransformOrigin="0.5, 0.5" Width="16" Height="16" Fill="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextBrushKey}}" Margin="0,0,10,0" VerticalAlignment="Center">
             <Rectangle.RenderTransform>
                 <!--giving the transform a name tells the framework not to freeze it-->
                 <RotateTransform x:Name="noFreeze" />

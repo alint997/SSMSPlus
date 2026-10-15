@@ -16,7 +16,7 @@ namespace SSMSPlusCore.Ui.Text
 
         public void SendStandard(string text, bool newLine = true)
         {
-            SendColored(text, Brushes.Black, newLine);
+            SendColored(text, null, newLine); // default text color = theme foreground of the RichTextBox
         }
 
         public void SendError(string text, bool newLine = true)

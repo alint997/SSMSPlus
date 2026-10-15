@@ -249,6 +249,7 @@
     <Compile Include="Ui\Utils\TaskExtentions.cs" />
     <Compile Include="Ui\Utils\XamlHelper.cs" />
     <Compile Include="Ui\ViewModelBase.cs" />
+    <Compile Include="Ui\VsThemeHelper.cs" />
     <Compile Include="Utils\ArrayExtensions.cs" />
     <Compile Include="Utils\FuncHelper.cs" />
     <Compile Include="Utils\AsyncLock.cs" />
@@ -281,6 +282,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Ui\Design\GridSplitterHorizontal.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Ui\Design\VsTheme.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -1,9 +1,14 @@
 ﻿using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Highlighting;
+using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using ICSharpCode.AvalonEdit.Rendering;
 using SSMSPlusCore.Ui.Search;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Windows.Controls;
+using System.Xml;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
@@ -17,7 +22,8 @@ namespace SSMSPlusCore.Ui.Extensions
     /// </summary>
     public static class SqlEditorHighlightBehavior
     {
-        private static IHighlightingDefinition _tsqlDefinition;
+        private static IHighlightingDefinition _tsqlLight;
+        private static IHighlightingDefinition _tsqlDark;
 
         public static TextFragments GetHighlightContext(DependencyObject obj)
         {
@@ -87,23 +93,94 @@ namespace SSMSPlusCore.Ui.Extensions
             if (renderer != null)
                 return renderer;
 
-            if (_tsqlDefinition == null)
-                _tsqlDefinition = HighlightingManager.Instance.GetDefinition("TSQL");
-
-            if (editor.SyntaxHighlighting == null)
-                editor.SyntaxHighlighting = _tsqlDefinition;
-
             renderer = new SearchMatchRenderer();
             editor.TextArea.TextView.BackgroundRenderers.Add(renderer);
             editor.SetValue(RendererProperty, renderer);
+
+            ApplyTheme(editor, renderer);
+
+            // the Background comes from the SSMS theme (DynamicResource): follow theme changes
+            var descriptor = DependencyPropertyDescriptor.FromProperty(Control.BackgroundProperty, typeof(TextEditor));
+            descriptor?.AddValueChanged(editor, (s, e) => ApplyTheme(editor, renderer));
+
             return renderer;
+        }
+
+        /// <summary>
+        /// Light themes use the AvalonEdit T-SQL colors, dark themes use colors close to the SSMS dark editor.
+        /// </summary>
+        private static void ApplyTheme(TextEditor editor, SearchMatchRenderer renderer)
+        {
+            var dark = IsDark(editor.Background);
+            editor.SyntaxHighlighting = dark ? GetDarkDefinition() : GetLightDefinition();
+            renderer.Dark = dark;
+            editor.TextArea.TextView.Redraw();
+        }
+
+        private static bool IsDark(Brush background)
+        {
+            if (!(background is SolidColorBrush solid))
+                return false;
+
+            var c = solid.Color;
+            var luminance = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+            return luminance < 0.5;
+        }
+
+        private static IHighlightingDefinition GetLightDefinition()
+        {
+            if (_tsqlLight == null)
+                _tsqlLight = HighlightingManager.Instance.GetDefinition("TSQL");
+            return _tsqlLight;
+        }
+
+        private static IHighlightingDefinition GetDarkDefinition()
+        {
+            if (_tsqlDark != null)
+                return _tsqlDark;
+
+            try
+            {
+                // same T-SQL definition as AvalonEdit, with the colors of the SSMS / VS dark editor
+                var stream = typeof(TextEditor).Assembly.GetManifestResourceStream("ICSharpCode.AvalonEdit.Highlighting.Resources.TSQL-Mode.xshd");
+                if (stream == null)
+                    return GetLightDefinition();
+
+                XshdSyntaxDefinition xshd;
+                using (stream)
+                using (var reader = new XmlTextReader(stream))
+                {
+                    xshd = HighlightingLoader.LoadXshd(reader);
+                }
+
+                foreach (var color in xshd.Elements.OfType<XshdColor>())
+                {
+                    switch (color.Name)
+                    {
+                        case "Comment": color.Foreground = new SimpleHighlightingBrush(Color.FromRgb(0x57, 0xA6, 0x4A)); break;
+                        case "Char": color.Foreground = new SimpleHighlightingBrush(Color.FromRgb(0xD6, 0x9D, 0x85)); break;
+                        case "Keywords": color.Foreground = new SimpleHighlightingBrush(Color.FromRgb(0x56, 0x9C, 0xD6)); break;
+                    }
+                }
+
+                _tsqlDark = HighlightingLoader.Load(xshd, HighlightingManager.Instance);
+            }
+            catch (Exception)
+            {
+                _tsqlDark = GetLightDefinition();
+            }
+
+            return _tsqlDark;
         }
 
         private sealed class SearchMatchRenderer : IBackgroundRenderer
         {
-            private static readonly Brush MatchBrush = CreateBrush();
+            private static readonly Brush LightMatchBrush = CreateBrush(Color.FromArgb(0xB0, 0xFF, 0xD7, 0x00)); // gold
+            private static readonly Brush DarkMatchBrush = CreateBrush(Color.FromArgb(0xC0, 0x7A, 0x5C, 0x12)); // dark gold, readable with light text
 
             public IList<TextSegment> Matches { get; set; } = new List<TextSegment>();
+
+            public bool Dark { get; set; }
 
             public KnownLayer Layer => KnownLayer.Selection;
 
@@ -117,13 +194,13 @@ namespace SSMSPlusCore.Ui.Extensions
                 foreach (var match in Matches.Where(m => m.EndOffset <= documentLength))
                 {
                     foreach (var rect in BackgroundGeometryBuilder.GetRectsForSegment(textView, match))
-                        drawingContext.DrawRectangle(MatchBrush, null, rect);
+                        drawingContext.DrawRectangle(Dark ? DarkMatchBrush : LightMatchBrush, null, rect);
                 }
             }
 
-            private static Brush CreateBrush()
+            private static Brush CreateBrush(Color color)
             {
-                var brush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xD7, 0x00)); // gold, like the previous viewer
+                var brush = new SolidColorBrush(color);
                 brush.Freeze();
                 return brush;
             }

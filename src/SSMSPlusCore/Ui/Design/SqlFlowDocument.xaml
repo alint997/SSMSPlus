@@ -1,11 +1,13 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"                   
-                    xmlns:search="clr-namespace:SSMSPlusCore.Ui.Search">
+                    xmlns:search="clr-namespace:SSMSPlusCore.Ui.Search"
+                    xmlns:vsui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0">
 
     <Style TargetType="FlowDocument" >
         <Setter Property="IsOptimalParagraphEnabled" Value="False" />
         <Setter Property="IsHyphenationEnabled" Value="False" />
-        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
+        <Setter Property="Background" Value="{DynamicResource {x:Static vsui:CommonControlsColors.TextBoxBackgroundBrushKey}}" />
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static vsui:CommonControlsColors.TextBoxTextBrushKey}}" />
         <Setter Property="FontFamily" Value="Courier New" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="TextAlignment" Value="Left" />
@@ -18,6 +20,7 @@
             </Trigger>
             <Trigger Property="TextFragmentType" Value="Highlight">
                 <Setter Property="Background" Value="Gold" />
+                <Setter Property="Foreground" Value="Black" />
                 <Setter Property="FontWeight" Value="DemiBold" />
             </Trigger>
         </Style.Triggers>

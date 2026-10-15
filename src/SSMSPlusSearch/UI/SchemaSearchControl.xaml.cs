@@ -17,6 +17,7 @@ namespace SSMSPlusSearch.UI
         public SchemaSearchControl()
         {
             InitializeComponent();
+            SSMSPlusCore.Ui.VsThemeHelper.ApplyThemedScrollBars(this);
             Loaded += SchemaSearchControl_Loaded;
         }
 

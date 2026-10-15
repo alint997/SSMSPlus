@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SSMSPlusCore.Ui.Controls.DropMenu"
+             xmlns:vsui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <StackPanel Orientation="Horizontal">
@@ -22,7 +23,7 @@
                         <Setter Property="Control.Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ToggleButton">
-                                    <Path Data="M0,0L3.5,4 7,0z" Fill="#FF000000" Name="Arrow" Margin="3,1,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Path Data="M0,0L3.5,4 7,0z" Fill="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextBrushKey}}" Name="Arrow" Margin="3,1,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </ControlTemplate>
                             </Setter.Value>
                         </Setter>

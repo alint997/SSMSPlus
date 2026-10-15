@@ -14,6 +14,7 @@ namespace SSMSPlusPreferences.UI
         public PreferencesWindow()
         {
             InitializeComponent();
+            SSMSPlusCore.Ui.VsThemeHelper.ApplyThemedScrollBars(this);
             var viewModel = ServiceLocator.GetRequiredService<PreferencesWindowVM>();
             this.DataContext = viewModel;
         }

@@ -25,6 +25,7 @@ namespace SSMSPlusHistory.UI
         public HistoryControl()
         {
             InitializeComponent();
+            SSMSPlusCore.Ui.VsThemeHelper.ApplyThemedScrollBars(this);
             this.DataContext = ServiceLocator.GetRequiredService<HistoryControlVM>();
             this.Loaded += HistoryControl_Loaded;
         }

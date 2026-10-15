@@ -4,11 +4,13 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:conv="clr-namespace:SSMSPlusCore.Ui.Converters;assembly=SSMSPlusCore"
+             xmlns:vsui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.15.0"
              xmlns:ext="clr-namespace:SSMSPlusCore.Ui.Extensions;assembly=SSMSPlusCore"
              xmlns:combo="clr-namespace:SSMSPlusCore.Ui.Controls.ComboCheckBox;assembly=SSMSPlusCore"
              xmlns:drop="clr-namespace:SSMSPlusCore.Ui.Controls.DropMenu;assembly=SSMSPlusCore"
              xmlns:loading="clr-namespace:SSMSPlusCore.Ui.Controls.LoadingIndicator;assembly=SSMSPlusCore"
-             Background="{DynamicResource {x:Static SystemColors.MenuBarBrushKey}}"
+             Background="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowBackgroundBrushKey}}"
+             Foreground="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextBrushKey}}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="1000">
     <UserControl.Resources>
@@ -83,13 +85,13 @@
                                        HorizontalAlignment="Left" Margin="0,10,0,10" Visibility="{Binding Path=IsIndexing, Converter={StaticResource VisibleIfTrueConverter}}"/>
 
         <Grid Name="objectsGrid" Grid.Row="3" ext:GridExtensions.Structure="1*,1*|*">
-            <ext:EnhancedDataGrid  Grid.Row="0" MinHeight="100" Style="{StaticResource FastReadOnly}" BorderBrush="Black" 
+            <ext:EnhancedDataGrid  Grid.Row="0" MinHeight="100" Style="{StaticResource FastReadOnly}" BorderBrush="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowBorderBrushKey}}" 
                        ItemsSource="{Binding Source={StaticResource SearchResultsVM_VS}}"
                        SelectedIndex="0"
                        SelectedValue="{Binding SelectedItem}"
                        IsEnabled="{Binding Path=ControlsEnabled}">
                 <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
+                    <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
                         <Setter Property="ext:GridExtensions.DoubleClickCommand" Value="{Binding ElementName=objectsGrid, Path=DataContext.LocateItemCmd}"/>
                         <Setter Property="ContextMenu" Value="{StaticResource RowMenu}" />
                     </Style>
@@ -128,7 +130,7 @@
                 </GridSplitter.Resources>
             </GridSplitter>
 
-            <FlowDocumentScrollViewer Name="fdsvDefination"  Grid.Row="1" Margin="0,10,0,0" BorderBrush="Black" BorderThickness="1" 
+            <FlowDocumentScrollViewer Name="fdsvDefination"  Grid.Row="1" Margin="0,10,0,0" BorderBrush="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowBorderBrushKey}}" BorderThickness="1" 
                                         ext:FlowDocumentScrollViewerDocumentHighlightBehavior.HighlightContext="{Binding SelectedItem.FullPreviewHighlight}">
 
                 <FlowDocumentScrollViewer.Resources>

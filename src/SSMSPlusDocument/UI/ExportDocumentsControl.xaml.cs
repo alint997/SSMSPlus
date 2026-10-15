@@ -17,6 +17,7 @@
         public ExportDocumentsControl()
         {
             InitializeComponent();
+            SSMSPlusCore.Ui.VsThemeHelper.ApplyThemedScrollBars(this);
             Loaded += SchemaSearchControl_Loaded;
         }
 
