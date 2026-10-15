@@ -191,6 +191,16 @@
           <CanonicalName>SSMSPlus.ExecutionPlanTreeActual</CanonicalName>
         </Strings>
       </Button>
+      <Button guid="guidCommand1PackageCmdSet" id="BlockingMonitorCmd" priority="0x0160" type="Button">
+        <Parent guid="guidCommand1PackageCmdSet" id="MyMenuGroup" />
+        <Icon guid="ImageCatalogGuid" id="Lock" />
+        <CommandFlag>IconIsMoniker</CommandFlag>
+        <Strings>
+          <ButtonText>Blocking Monitor</ButtonText>
+          <ToolTipText>Who blocks whom right now on the server of the active query window</ToolTipText>
+          <CanonicalName>SSMSPlus.BlockingMonitor</CanonicalName>
+        </Strings>
+      </Button>
       <Button guid="guidCommand1PackageCmdSet" id="PlanTreeWindowCmd" priority="0x0150" type="Button">
         <Parent guid="guidCommand1PackageCmdSet" id="MyMenuGroup" />
         <Icon guid="ImageCatalogGuid" id="Hierarchy" />
@@ -276,6 +286,7 @@
       <IDSymbol name="PlanTreeEstimatedCmd" value="3201" />
       <IDSymbol name="PlanTreeActualCmd" value="3202" />
       <IDSymbol name="PlanTreeWindowCmd" value="3203" />
+      <IDSymbol name="BlockingMonitorCmd" value="3301" />
     </GuidSymbol>
 
     <GuidSymbol name="timeback" value="{0c6e5c94-f934-4bac-acf9-e56653df5110}">

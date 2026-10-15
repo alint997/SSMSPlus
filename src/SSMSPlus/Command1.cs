@@ -39,6 +39,7 @@ namespace SSMSPlus
         private static IConfigurationRoot _configuration;
         private static Features.QueryToolsCommands _queryTools;
         private static Features.ExecutionPlan.PlanCommands _planCommands;
+        private static Features.Blocking.BlockingCommands _blockingCommands;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Command1"/> class.
@@ -71,6 +72,7 @@ namespace SSMSPlus
 
                 _queryTools = Features.QueryToolsCommands.Register(_dte, _commandService);
                 _planCommands = Features.ExecutionPlan.PlanCommands.Register(_asyncPackage, _dte, _commandService);
+                _blockingCommands = Features.Blocking.BlockingCommands.Register(_asyncPackage, _dte, _commandService);
             }
             catch (Exception ex)
             {

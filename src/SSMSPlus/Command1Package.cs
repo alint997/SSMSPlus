@@ -32,12 +32,13 @@ namespace SSMSPlus
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = false, AllowsBackgroundLoading = true)]
-    [ProvideMenuResource("Menus.ctmenu", 6)]
+    [ProvideMenuResource("Menus.ctmenu", 7)]
     [Guid(Command1Package.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideToolWindow(typeof(HistoryToolWindow), Style = VsDockStyle.Tabbed, Window = "00000000-0000-0000-0000-000000000001")]
     [ProvideToolWindow(typeof(SearchToolWindow), Window = "00000000-0000-0000-0000-000000000002", MultiInstances = true, Transient = true)]
+    [ProvideToolWindow(typeof(SSMSPlus.Features.Blocking.BlockingToolWindow), Style = VsDockStyle.MDI, Transient = true)]
     [ProvideToolWindow(typeof(SSMSPlus.Features.ExecutionPlan.PlanToolWindow), Style = VsDockStyle.MDI, Transient = true)]
     [ProvideToolWindow(typeof(ExportDocumentsWindow), Window = "00000000-0000-0000-0000-000000000003", MultiInstances = true, Transient = true)]
     public sealed class Command1Package : AsyncPackage

@@ -66,6 +66,9 @@
   <ItemGroup>
     <Compile Include="Command1.cs" />
     <Compile Include="Command1Package.cs" />
+    <Compile Include="Features\Blocking\BlockingCommands.cs" />
+    <Compile Include="Features\Blocking\BlockingData.cs" />
+    <Compile Include="Features\Blocking\BlockingMonitorControl.cs" />
     <Compile Include="Features\ExecuteStatement\StatementExecutor.cs" />
     <Compile Include="Features\ExecutionPlan\PlanCommands.cs" />
     <Compile Include="Features\ExecutionPlan\PlanLayout.cs" />

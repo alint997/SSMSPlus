@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.3 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.4 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -11,6 +11,7 @@ It extends SSMS with a handful set of features:
     Execute Current Statement
     Results grid: Copy as INSERT / CSV / JSON, selection aggregates
     Execution Plan Tree (DB2 Visual Explain style)
+    Blocking Monitor
 
 
 ### Table Of Contents
@@ -31,6 +32,8 @@ It extends SSMS with a handful set of features:
   * [Execute Current Statement](#execute-current-statement)
   * [Results Grid Tools](#results-grid-tools)
   * [Execution Plan Tree](#execution-plan-tree)
+  * [Blocking Monitor](#blocking-monitor)
+- [What's new in 7.4](#whats-new-in-74)
 - [What's new in 7.3](#whats-new-in-73)
 - [What's new in 7.2](#whats-new-in-72)
 - [What's new in 7.1](#whats-new-in-71)
@@ -200,6 +203,7 @@ Since version 7.0 the menu is no longer a top-level menu: it is available under 
 * Document Export (`Ctrl+Alt+E`)
 * Execute Current Statement (`Ctrl+Shift+E` in a query window)
 * Execution Plan Tree, Execution Plan Tree (Estimated) / (Actual)
+* Blocking Monitor
 * About SSMSPlus (version, working directory with the local database and logs, link to report an issue)
 
 ![SSMS Plus Menu](docs/illustrations/menu-screen.png?raw=true "SSMS Plus Menu")
@@ -275,6 +279,22 @@ What the tree shows:
 * Clicking a node shows all its properties on the right (costs, I/O, CPU, rows, executions, logical reads, seek predicates, predicates, output columns, warnings).
 * The *Operators* tab lists the operators sorted by cost (double click to find a node in the tree); the *XML* tab shows the plan XML.
 * When the optimizer suggests a missing index, *Copy missing index* copies the `CREATE INDEX` statement.
+
+## Blocking Monitor
+Shows who blocks whom right now: **Tools > SSMS Plus > Blocking Monitor** opens it on the server of the active query window (*Use active query window* switches to another server).
+
+* The sessions are shown as a tree: head blockers at the top (⛔), the sessions waiting on them below (⏳), at any depth. Head blockers are highlighted, long waits (30 s or more) are marked.
+* **Idle sessions with an open transaction** (💤) are shown even before they block anyone (option): the most common cause of blocking is a `BEGIN TRAN` without `COMMIT` / `ROLLBACK` left in a query window or an application. For an idle session the last batch it ran is shown.
+* For each session: wait type, wait time and resource, open transactions and how long they have been open, status, login, host, program, database and the SQL (the running statement, or the last batch for idle sessions). Your own session is marked.
+* The SQL is the text the client sent (`sys.dm_exec_input_buffer`, SQL Server 2016+), so auto-parameterized statements show their literal values. For parameterized text (`sp_executesql`, `(@1 int)SELECT ...`) *Copy SQL* produces a runnable script with `DECLARE`s: runtime values from the live plan (`sys.dm_exec_query_statistics_xml`), else the values the cached plan was compiled with (marked as such), else `NULL`.
+* Details panel: *Copy SQL*, *Show plan* (the cached plan of the running statement, in Execution Plan Tree) and *Script KILL* (opens a new query window with `KILL <session>`; nothing is executed).
+* Auto refresh (off, 2, 5, 10, 30 s; only while the window is visible) and F5.
+* Read-only: it only queries the DMVs (`sys.dm_exec_sessions`, `sys.dm_exec_requests`, `sys.dm_exec_connections`, `sys.dm_tran_session_transactions`, `sys.dm_tran_active_transactions`, `sys.dm_exec_sql_text`); nothing is installed on the server.
+* Permissions: without `VIEW SERVER STATE` (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022+) SQL Server returns only your own session, so blocking by other users is not visible; the window shows a warning in that case. `sysadmin` logins (for example `sa`) see everything. On Azure SQL Database only the sessions of the current database are visible.
+
+# What's new in 7.4
+
+* **Blocking Monitor** (Tools > SSMS Plus): who blocks whom right now, as a tree with the head blockers first, including idle sessions that keep a transaction open (a forgotten `BEGIN TRAN`); details, cached plan in Execution Plan Tree, *Script KILL*, auto refresh and a warning when the login cannot see other sessions. See [Blocking Monitor](#blocking-monitor).
 
 # What's new in 7.3
 

@@ -30,6 +30,7 @@ namespace SSMSPlus.Features.ExecutionPlan
         private readonly AsyncPackage _package;
         private readonly DTE2 _dte;
         private CancellationTokenSource _running;
+        private static PlanCommands _instance;
 
         private PlanCommands(AsyncPackage package, DTE2 dte)
         {
@@ -41,6 +42,7 @@ namespace SSMSPlus.Features.ExecutionPlan
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             var instance = new PlanCommands(package, dte);
+            _instance = instance;
             if (commandService != null)
             {
                 Add(commandService, EstimatedPlanCmd, (s, e) => instance.Run(false));
@@ -172,6 +174,26 @@ namespace SSMSPlus.Features.ExecutionPlan
                         SsmsPlusMessageBox.ShowError("Execution Plan Tree", ex.Message);
                 }
             });
+        }
+
+        /// <summary>Shows a plan XML in the Execution Plan Tree window (used by the Blocking Monitor).</summary>
+        public static async Task ShowPlanXmlAsync(AsyncPackage package, string xml, string source)
+        {
+            await package.JoinableTaskFactory.SwitchToMainThreadAsync();
+            PlanViewerControl viewer;
+            if (_instance != null)
+            {
+                viewer = await _instance.GetViewerAsync();
+            }
+            else
+            {
+                var window = await package.ShowToolWindowAsync(typeof(PlanToolWindow), 0, true, package.DisposalToken) as PlanToolWindow;
+                if (window == null)
+                    return;
+                viewer = window.Viewer;
+            }
+
+            viewer.ShowDocument(ShowPlanParser.Parse(xml, source));
         }
 
         private async Task<PlanViewerControl> GetViewerAsync()
