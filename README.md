@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.5 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.6 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -32,7 +32,9 @@ It extends SSMS with a handful set of features:
   * [Execute Current Statement](#execute-current-statement)
   * [Results Grid Tools](#results-grid-tools)
   * [Execution Plan Tree](#execution-plan-tree)
+  * [Query Advisor](#query-advisor)
   * [Blocking Monitor](#blocking-monitor)
+- [What's new in 7.6](#whats-new-in-76)
 - [What's new in 7.5](#whats-new-in-75)
 - [What's new in 7.4](#whats-new-in-74)
 - [What's new in 7.3](#whats-new-in-73)
@@ -217,7 +219,9 @@ If the menu does not show up after an install or update, close SSMS and run `SSM
 
 Every time you execute a query through the editor, SSMS Plus will save that query.
 
-Open it from **Tools > SSMS Plus > Execution History** (`Ctrl+Alt+H`). Double click a row (or right click > *Open script*) to open the query in a new editor.
+Open it from **Tools > SSMS Plus > Execution History** (`Ctrl+Alt+H`). Double click a row (or right click > *Open script*) to open the query in a new editor; right click > *Delete* (or the `Delete` key) removes the entry from the history. When the new query window opens on `master` (no user database selected, for example *New Query* on a server in Object Explorer) and is connected to the same server, the database the query was run in is selected, as if chosen in the database list of the toolbar; when another database is selected, that one is kept.
+
+The list refreshes by itself after each execution. The database saved with a query is the one selected in the query window when it ran.
 
 The query preview uses the SSMS text editor font (family and size from *Tools > Options > Environment > Fonts and Colors > Text Editor*) and can be zoomed like a query window: `Ctrl` + mouse wheel, `Ctrl+Shift+.` / `Ctrl+Shift+,`, `Ctrl+0` to reset, or right click > *Zoom In / Zoom Out / Reset Zoom*. The zoom level is remembered.
 
@@ -270,6 +274,7 @@ How to open it:
 * Right click in a query window > **Execution Plan Tree (Estimated)**: the plan of the selected text (or the whole script) is requested with `SET SHOWPLAN_XML ON`; nothing is executed.
 * **Execution Plan Tree (Actual)**: the query is executed with `SET STATISTICS XML ON` inside a transaction that is always rolled back. When the script is not only `SELECT`s, a confirmation is shown first (statements that commit by themselves cannot be rolled back).
 * **Tools > SSMS Plus > Execution Plan Tree** opens the window; if the active document is a plan XML (SSMS: right click a graphical plan > *Show Execution Plan XML...*) or a `.sqlplan` file, that plan is shown.
+* **Refresh** (or `F5` in the plan window) gets the last plan again from the same query window, with the same kind (estimated / actual) and the current text or selection of that window, so you can change the query and refresh without leaving the plan window. *Estimated plan* / *Actual plan* in the plan window also use that query window when the plan window is the active one. The plan uses the database currently selected in the query window.
 * In the window: *Open .sqlplan...* and *Paste XML* (a plan XML copied to the clipboard).
 
 The plan is requested on a separate connection to the server and database of the query window (Windows or SQL Server authentication). For Microsoft Entra connections use SSMS's own plan (`Ctrl+L` / `Ctrl+M`), then *Show Execution Plan XML* and open it in the tree.
@@ -283,6 +288,33 @@ What the tree shows:
 * The *Operators* tab lists the operators sorted by cost (double click to find a node in the tree); the *XML* tab shows the plan XML.
 * When the optimizer suggests a missing index, *Copy missing index* copies the `CREATE INDEX` statement.
 
+## Query Advisor
+The *Advisor* tab of the Execution Plan Tree window checks the plan and the statistics of its tables and lists findings by severity (High, Medium, Info), inspired by the DB2 Query Tuner advisors. Each finding says what was found, why it matters and what to do, and most come with a T-SQL script (*Copy script*, or *Open in query window*; nothing is executed). Clicking a finding shows the operator's properties, double click (or *Show in tree*) selects it in the tree.
+
+Plan rules (access path):
+* **P1** Key / RID Lookup that costs 10% or more of the statement or runs 1,000+ times: the index does not cover the query. The script adds the columns read by the lookup to the `INCLUDE` list of the index used (`DROP_EXISTING`, keeping its keys, includes and filter when they were read from the server).
+* **P2** Scan of a table with 10,000+ rows whose predicate keeps 10% of the rows or less: a suggested index (equality columns, then one range column, `INCLUDE` the columns read). When the column is inside a function or conversion (`YEAR(d) = 2026`, `CONVERT_IMPLICIT`), the finding says how to rewrite the condition instead.
+* **P3** Row estimate off by 10x or more in an actual plan, reported where the error starts (not on every operator above it): update statistics, with hints for table variables, correlated predicates and parameter sniffing.
+* **P4** Sort / hash spill to tempdb. **P5** implicit conversion that prevents a seek. **P6** missing index reported by the optimizer (compared with the existing indexes). **P7** join without a join predicate. **P8** columns without statistics, memory grant warnings and grants much larger than used. **P9** plan compiled for other parameter values than the ones it ran with, with wrong estimates.
+
+Query text rules (the statement text of the plan, parsed with ScriptDom; most come with an equivalent rewrite):
+* **T1** function or calculation on a column in WHERE / ON / HAVING (`YEAR(d) = 2026` becomes `d >= '20260101' AND d < '20270101'`; also `ISNULL`, `LEFT`, `SUBSTRING(col, 1, n)`, `DATEADD`, `col + n`, `UPPER` / `LTRIM`...). `CAST(col AS date)` is not reported: SQL Server can still seek on it.
+* **T2** `LIKE` with a leading `%`. **T3** `NOT IN (subquery)`, rewritten with `NOT EXISTS` (no NULL trap). **T4** `SELECT *`. **T5** `ORDER BY` with `TOP 100 PERCENT` in a subquery or view (ignored).
+* **T6** `NOLOCK` / `READ UNCOMMITTED`. **T7** scalar user-defined functions (with a query for `is_inlineable`). **T8** `OR` between conditions on different columns. **T9** cursors. **T10** `= NULL` / `<> NULL` (never true), rewritten with `IS NULL`.
+
+Annotated query and index advice:
+* **Annotated query** tab: the statement text with a comment after every table: rows in the table, the operators that read it (index, share of the cost, estimated -> actual rows, executions), age and modifications of its statistics and the findings about it. Tables the text does not show (views, procedures) are listed below.
+* **Index advice** tab: the index suggestions of all statements (P1, P2, P6) merged per table into as few indexes as possible (a suggestion whose keys are a prefix of another one is served by it) and compared with the existing indexes: *already covered*, *extend* an index with the same leading keys (`DROP_EXISTING`) instead of a near duplicate, or a *new* index; with the existing indexes listed and a script for each.
+* **Compare** tab: every plan shown in the window is kept (the last 20, for the session), so nothing has to be prepared before a change: by default *Before* is the previous plan of the same query window and *After* the latest one; change the query, an index or the statistics, press *Refresh* (`F5`) and the comparison appears. Pick any two plans in the *Before* / *After* lists; choosing a plan in *Before* (or *Set as baseline* in the toolbar) pins it as the baseline until *Clear baseline*; *Swap*, *Copy as text* and *Clear history* are next to them. The page shows **Better / Worse / Mixed / About the same** with one plain sentence (for example *After is 15x faster: elapsed time 120 ms → 8 ms*), then the key measures as before / after bars (elapsed time, CPU, logical reads, estimated cost, memory grant, high + medium findings; tiny differences such as 1 ms → 0 ms are ignored), then what changed (tables read differently, findings fixed or new); the details per statement open on request. *Copy as text* gives the same as plain text, and *Export report* includes it as an HTML page with the same bars. `Ctrl` + mouse wheel zooms.
+* **Export report...**: one HTML file with the statements, all findings (why, suggestion, script), the annotated query, the index advice and the comparison, to keep or share.
+* The annotated query, index advice, comparison, advisor script and XML views use the SSMS editor font and can be zoomed like the query preview (`Ctrl` + mouse wheel, `Ctrl+Shift+.` / `Ctrl+Shift+,`, `Ctrl+0`, right click); the tabs follow the SSMS theme.
+
+Statistics Advisor:
+* **S1** statistics of the tables in the plan that are out of date: 10% or more of the rows modified since the last update, never updated, built from a small sample (when estimates are wrong, or below 5% on tables with 1M+ rows), or with `NORECOMPUTE`. One finding per table with an `UPDATE STATISTICS ... WITH FULLSCAN` script.
+* Without a connection the advisor uses the statistics the optimizer reports in the plan (SQL Server 2017+ plans). Plans obtained from the server (Estimated / Actual) also read, on the same connection, the row counts, all statistics (`sys.stats`, `sys.dm_db_stats_properties`) and the index definitions of the tables; for plans opened from a file or the clipboard use *Read from server* (connection of the active query window). Read-only catalog queries; temporary tables and table variables are skipped.
+
+Index findings (P1, P2) on cheap statements are lowered: below an estimated cost of 0.2 they are Info, below 1 at most Medium, since they matter mainly for queries that run very often. The thresholds are rules of thumb: review every script before running it, especially index changes on large or busy tables.
+
 ## Blocking Monitor
 Shows who blocks whom right now: **Tools > SSMS Plus > Blocking Monitor** opens it on the server of the active query window (*Use active query window* switches to another server).
 
@@ -294,6 +326,14 @@ Shows who blocks whom right now: **Tools > SSMS Plus > Blocking Monitor** opens 
 * Auto refresh (off, 2, 5, 10, 30 s; only while the window is visible) and F5.
 * Read-only: it only queries the DMVs (`sys.dm_exec_sessions`, `sys.dm_exec_requests`, `sys.dm_exec_connections`, `sys.dm_tran_session_transactions`, `sys.dm_tran_active_transactions`, `sys.dm_exec_sql_text`); nothing is installed on the server.
 * Permissions: without `VIEW SERVER STATE` (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022+) SQL Server returns only your own session, so blocking by other users is not visible; the window shows a warning in that case. `sysadmin` logins (for example `sa`) see everything. On Azure SQL Database only the sessions of the current database are visible.
+
+# What's new in 7.6
+
+* **Query Advisor**: new *Advisor* tab in Execution Plan Tree with plan rules (expensive lookups, scans that could use an index, wrong estimates, spills, implicit conversions, missing indexes, cartesian joins, memory grants, parameter sniffing), query text rules (functions on columns, leading wildcards, NOT IN, SELECT *, NOLOCK, scalar UDFs, OR, cursors, = NULL) with suggested rewrites, and a Statistics Advisor, each with an explanation and a script; an *Annotated query* tab, an *Index advice* tab that merges the index suggestions per table against the existing indexes, and *Export report* (HTML). See [Query Advisor](#query-advisor).
+* **Compare**: every plan is kept and compared with the previous one of the same query window (no baseline needed beforehand; *Before* / *After* lists, pin / clear / swap a baseline). The result is a page: verdict in one sentence, before / after bars for time, CPU, reads, cost, memory grant and findings, what changed, details per statement on request; *Copy as text*.
+* **Execution Plan Tree**: *Refresh* / `F5` gets the plan again from the same query window (no need to switch back to it); plans use the database currently selected in the query window; clearer edges where branches join or fork; zoom on the Annotated query, Index advice and XML tabs; themed tabs.
+* **Execution History**: right click > *Delete* (or `Delete`) removes an entry; double click selects the query's database when the new window opens on `master`; the list refreshes after each execution; the database saved is the one selected in the window at execution time (not the one it was opened with); a failed save is logged and retried instead of being lost.
+* Themed context menus with icons; less noise in the log at startup.
 
 # What's new in 7.5
 

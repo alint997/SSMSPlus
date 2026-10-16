@@ -23,6 +23,11 @@
             await _db.ExecuteAsync(sql, queryItems);
         }
 
+        public async Task Delete(int id)
+        {
+            await _db.ExecuteAsync("DELETE FROM 'History.QueryItem' WHERE Id = @Id;", new { Id = id });
+        }
+
         public async Task<QueryItem[]> FindItems(FilterContext filterContext)
         {
             var stringBuilder = new StringBuilder();

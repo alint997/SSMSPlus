@@ -21,6 +21,25 @@ namespace SSMSPlus.Features.ExecutionPlan
             public string Server { get; set; }
             public string Database { get; set; }
             public string Error { get; set; }
+
+            /// <summary>Moniker of the query window (ISqlEditorService), when known.</summary>
+            public string Moniker { get; set; }
+        }
+
+        /// <summary>
+        /// The same connection with another initial database: the one currently selected in the query window
+        /// (USE / the database list of the toolbar), which UIConnectionInfo does not reflect.
+        /// </summary>
+        public static Result WithDatabase(Result connection, string database)
+        {
+            if (connection == null || connection.Error != null || string.IsNullOrEmpty(connection.ConnectionString)
+                || string.IsNullOrEmpty(database) || string.Equals(database, connection.Database, StringComparison.Ordinal))
+                return connection;
+
+            var builder = new SqlConnectionStringBuilder(connection.ConnectionString) { InitialCatalog = database };
+            connection.ConnectionString = builder.ConnectionString;
+            connection.Database = database;
+            return connection;
         }
 
         /// <param name="fallbackConnectionInfo">UIConnectionInfo from ISqlEditorService, used when ServiceCache has none.</param>
@@ -38,6 +57,15 @@ namespace SSMSPlus.Features.ExecutionPlan
 
             if (uiConnectionInfo == null)
                 return new Result { Error = "The active query window is not connected. Connect it to a server first." };
+
+            return FromConnectionInfo(uiConnectionInfo);
+        }
+
+        /// <summary>Connection string from a UIConnectionInfo (of any query window).</summary>
+        public static Result FromConnectionInfo(object uiConnectionInfo)
+        {
+            if (uiConnectionInfo == null)
+                return new Result { Error = "The query window is not connected. Connect it to a server first." };
 
             var type = uiConnectionInfo.GetType();
             string server = GetString(type, uiConnectionInfo, "ServerName");

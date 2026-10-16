@@ -22,7 +22,17 @@
             <conv:HighlightToTextBlockConverter x:Key="HighlightToTextBlock" />
             <ContextMenu  x:Key="RowMenu" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
                 <MenuItem Header="Open script" CommandParameter="{Binding}"
-                  Command="{Binding DataContext.OpenScriptCmd, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}" />
+                  Command="{Binding DataContext.OpenScriptCmd, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
+                    <MenuItem.Icon>
+                        <TextBlock Style="{DynamicResource SsmsPlusMenuIcon}" Text="&#xE8E5;" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="Delete" InputGestureText="Del" CommandParameter="{Binding}"
+                  Command="{Binding DataContext.DeleteCmd, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
+                    <MenuItem.Icon>
+                        <TextBlock Style="{DynamicResource SsmsPlusMenuIcon}" Text="&#xE74D;" />
+                    </MenuItem.Icon>
+                </MenuItem>
             </ContextMenu>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/SSMSPlusCore;component/Ui/Design/DataGrid.xaml"/>
@@ -97,6 +107,9 @@
                         <Setter Property="ContextMenu" Value="{StaticResource RowMenu}" />
                     </Style>
                 </DataGrid.RowStyle>
+                <DataGrid.InputBindings>
+                    <KeyBinding Key="Delete" Command="{Binding DeleteCmd}" CommandParameter="{Binding SelectedItem}"/>
+                </DataGrid.InputBindings>
                 <DataGrid.Resources>
                     <ResourceDictionary Source="pack://application:,,,/SSMSPlusCore;component/Ui/Design/DataGridRunFragment.xaml"/>
                 </DataGrid.Resources>

@@ -66,6 +66,18 @@
   <ItemGroup>
     <Compile Include="Command1.cs" />
     <Compile Include="Command1Package.cs" />
+    <Compile Include="Features\Advisor\AdvisorCatalogReader.cs" />
+    <Compile Include="Features\Advisor\AdvisorModel.cs" />
+    <Compile Include="Features\Advisor\AdvisorReport.cs" />
+    <Compile Include="Features\Advisor\AdvisorView.cs" />
+    <Compile Include="Features\Advisor\CompareView.cs" />
+    <Compile Include="Features\Advisor\IndexAdvisor.cs" />
+    <Compile Include="Features\Advisor\PlanAdvisor.cs" />
+    <Compile Include="Features\Advisor\PlanComparer.cs" />
+    <Compile Include="Features\Advisor\QueryAnnotator.cs" />
+    <Compile Include="Features\Advisor\QueryTextAdvisor.cs" />
+    <Compile Include="Features\Advisor\ScriptTextView.cs" />
+    <Compile Include="Features\Advisor\StatisticsAdvisor.cs" />
     <Compile Include="Features\Blocking\BlockingCommands.cs" />
     <Compile Include="Features\Blocking\BlockingData.cs" />
     <Compile Include="Features\Blocking\BlockingMonitorControl.cs" />

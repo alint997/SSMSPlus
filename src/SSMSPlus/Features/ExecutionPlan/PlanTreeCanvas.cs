@@ -89,8 +89,32 @@ namespace SSMSPlus.Features.ExecutionPlan
             Width = layout.Width;
             Height = layout.Height;
 
-            foreach (var edge in layout.Edges)
-                Children.Add(CreateEdge(edge));
+            // Each child gets its own entry point on the bottom of its parent (ordered like the children), and the
+            // horizontal runs of children on the same side are on different levels, so lines do not overlap or cross.
+            foreach (var group in layout.Edges.GroupBy(e => e.Parent))
+            {
+                var edges = group.OrderBy(e => e.Child.CenterX).ToList();
+                var parent = group.Key;
+                int n = edges.Count;
+                double spacing = n > 1 ? Math.Min(22, parent.Width * 0.6 / (n - 1)) : 0;
+                double firstPort = parent.CenterX - spacing * (n - 1) / 2;
+                for (int i = 0; i < n; i++)
+                {
+                    double port = firstPort + spacing * i;
+                    double cx = edges[i].Child.CenterX;
+
+                    // Children further out on each side run higher (closer to the parent) than the inner ones,
+                    // so a horizontal run never crosses the vertical line of a sibling.
+                    int level;
+                    if (cx < port - 0.5)
+                        level = Enumerable.Range(i + 1, n - i - 1).Count(j => edges[j].Child.CenterX < firstPort + spacing * j - 0.5);
+                    else if (cx > port + 0.5)
+                        level = Enumerable.Range(0, i).Count(j => edges[j].Child.CenterX > firstPort + spacing * j + 0.5);
+                    else
+                        level = 0;
+                    Children.Add(CreateEdge(edges[i], port, level));
+                }
+            }
 
             foreach (var box in layout.Nodes)
             {
@@ -269,45 +293,63 @@ namespace SSMSPlus.Features.ExecutionPlan
             }
         }
 
-        private UIElement CreateEdge(PlanEdge edge)
+        /// <summary>
+        /// Orthogonal edge from the top of the child to its port on the bottom of the parent, with a separate
+        /// arrow head (data flows up into the parent).
+        /// </summary>
+        private UIElement CreateEdge(PlanEdge edge, double px, int level)
         {
             double thickness = PlanLayout.EdgeThickness(edge.Rows);
-            double px = edge.Parent.CenterX;
             double py = edge.Parent.Bottom;
             double cx = edge.Child.CenterX;
             double cy = edge.Child.Y;
-            double midY = py + (cy - py) / 2;
 
-            var figure = new PathFigure { StartPoint = new Point(cx, cy) };
-            figure.Segments.Add(new LineSegment(new Point(cx, midY), true));
-            figure.Segments.Add(new LineSegment(new Point(px, midY), true));
-            figure.Segments.Add(new LineSegment(new Point(px, py + 6), true));
+            double arrowHeight = 6 + thickness;
+            double arrowHalfWidth = 3.5 + thickness * 0.8;
+            double top = py + arrowHeight;
 
-            // Arrow head: data flows up into the parent.
-            var arrow = new PathFigure { StartPoint = new Point(px, py), IsFilled = true, IsClosed = true };
-            arrow.Segments.Add(new LineSegment(new Point(px - 5, py + 7), true));
-            arrow.Segments.Add(new LineSegment(new Point(px + 5, py + 7), true));
+            // Horizontal run between the arrow and the child, moved up 5 px per level.
+            double run = top + (cy - top) / 2 - level * 5;
+            run = Math.Max(top + thickness + 2, Math.Min(cy - thickness - 2, run));
 
-            var geometry = new PathGeometry();
-            geometry.Figures.Add(figure);
-            geometry.Figures.Add(arrow);
-
-            var path = new Path
+            var line = new PathFigure { StartPoint = new Point(cx, cy) };
+            if (Math.Abs(cx - px) < 0.5)
             {
-                Data = geometry,
-                StrokeThickness = thickness,
-                StrokeLineJoin = PenLineJoin.Round,
-                SnapsToDevicePixels = true,
-            };
-            path.SetResourceReference(Shape.StrokeProperty, Microsoft.VisualStudio.PlatformUI.EnvironmentColors.ToolWindowTextBrushKey);
-            path.SetResourceReference(Shape.FillProperty, Microsoft.VisualStudio.PlatformUI.EnvironmentColors.ToolWindowTextBrushKey);
-
-            if (edge.Rows >= 0)
+                line.Segments.Add(new LineSegment(new Point(px, top), true));
+            }
+            else
             {
-                path.ToolTip = string.Format(CultureInfo.CurrentCulture, "{0} rows", FormatCount(edge.Rows));
+                line.Segments.Add(new LineSegment(new Point(cx, run), true));
+                line.Segments.Add(new LineSegment(new Point(px, run), true));
+                line.Segments.Add(new LineSegment(new Point(px, top), true));
             }
 
-            return path;
+            var arrow = new PathFigure { StartPoint = new Point(px, py), IsFilled = true, IsClosed = true };
+            arrow.Segments.Add(new LineSegment(new Point(px - arrowHalfWidth, top + 0.5), true));
+            arrow.Segments.Add(new LineSegment(new Point(px + arrowHalfWidth, top + 0.5), true));
+
+            var group = new Canvas { IsHitTestVisible = true, Opacity = 0.8 };
+            var linePath = new Path
+            {
+                Data = new PathGeometry(new[] { line }),
+                StrokeThickness = thickness,
+                StrokeLineJoin = PenLineJoin.Miter,
+                StrokeStartLineCap = PenLineCap.Flat,
+                StrokeEndLineCap = PenLineCap.Flat,
+                SnapsToDevicePixels = true,
+            };
+            linePath.SetResourceReference(Shape.StrokeProperty, Microsoft.VisualStudio.PlatformUI.EnvironmentColors.ToolWindowTextBrushKey);
+
+            var arrowPath = new Path { Data = new PathGeometry(new[] { arrow }), SnapsToDevicePixels = true };
+            arrowPath.SetResourceReference(Shape.FillProperty, Microsoft.VisualStudio.PlatformUI.EnvironmentColors.ToolWindowTextBrushKey);
+
+            group.Children.Add(linePath);
+            group.Children.Add(arrowPath);
+
+            if (edge.Rows >= 0)
+                group.ToolTip = string.Format(CultureInfo.CurrentCulture, "{0} rows", FormatCount(edge.Rows));
+
+            return group;
         }
 
         public static string FormatNumber(double value)

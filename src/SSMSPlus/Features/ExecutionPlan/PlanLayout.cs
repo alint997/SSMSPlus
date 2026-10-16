@@ -118,7 +118,8 @@ namespace SSMSPlus.Features.ExecutionPlan
         {
             if (rows < 0)
                 return 1;
-            return 1 + Math.Min(6, Math.Log10(Math.Max(1, rows)));
+            // 1 px for a few rows, up to 4.5 px for millions: thick enough to compare, thin enough not to merge.
+            return 1 + Math.Min(3.5, Math.Log10(Math.Max(1, rows)) * 0.6);
         }
     }
 }

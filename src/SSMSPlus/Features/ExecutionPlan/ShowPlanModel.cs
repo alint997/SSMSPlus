@@ -36,6 +36,64 @@ namespace SSMSPlus.Features.ExecutionPlan
         public string Value { get; }
     }
 
+    /// <summary>A column referenced by an operator (predicate, seek or output list).</summary>
+    public sealed class PlanColumn
+    {
+        public string Database { get; set; }
+        public string Schema { get; set; }
+        public string Table { get; set; }
+        public string Alias { get; set; }
+        public string Column { get; set; }
+
+        /// <summary>Comparison the column takes part in (EQ, LT, GT, ...), or null.</summary>
+        public string CompareOp { get; set; }
+
+        /// <summary>True when the column is inside a function / conversion / calculation (not sargable).</summary>
+        public bool Wrapped { get; set; }
+
+        public string Name => PlanNode.Clean(Column);
+
+        public bool BelongsTo(PlanNode node)
+        {
+            if (node == null || string.IsNullOrEmpty(Column))
+                return false;
+            if (!string.IsNullOrEmpty(Table))
+                return string.Equals(PlanNode.Clean(Table), PlanNode.Clean(node.ObjectTable), StringComparison.OrdinalIgnoreCase)
+                    && (string.IsNullOrEmpty(Alias) || string.IsNullOrEmpty(node.ObjectAlias) || string.Equals(PlanNode.Clean(Alias), PlanNode.Clean(node.ObjectAlias), StringComparison.OrdinalIgnoreCase));
+            return !string.IsNullOrEmpty(Alias) && string.Equals(PlanNode.Clean(Alias), PlanNode.Clean(node.ObjectAlias), StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override string ToString() => string.Join(".", new[] { Alias ?? Table, Column }.Where(x => !string.IsNullOrEmpty(x)).Select(PlanNode.Clean));
+    }
+
+    /// <summary>A statistics object the optimizer used (showplan OptimizerStatsUsage, SQL Server 2017+).</summary>
+    public sealed class PlanStatisticsUsage
+    {
+        public string Database { get; set; }
+        public string Schema { get; set; }
+        public string Table { get; set; }
+        public string Statistics { get; set; }
+        public double? ModificationCount { get; set; }
+        public double? SamplingPercent { get; set; }
+        public DateTime? LastUpdate { get; set; }
+    }
+
+    /// <summary>A PlanAffectingConvert warning of the statement.</summary>
+    public sealed class PlanConvertIssue
+    {
+        /// <summary>"Seek Plan" or "Cardinality Estimate".</summary>
+        public string Issue { get; set; }
+        public string Expression { get; set; }
+    }
+
+    public sealed class PlanParameter
+    {
+        public string Name { get; set; }
+        public string DataType { get; set; }
+        public string CompiledValue { get; set; }
+        public string RuntimeValue { get; set; }
+    }
+
     /// <summary>One node of the tree: an operator (RelOp), the statement root, or a table / index leaf.</summary>
     public sealed class PlanNode
     {
@@ -112,6 +170,19 @@ namespace SSMSPlus.Features.ExecutionPlan
         public string Predicate { get; set; }
         public string OutputList { get; set; }
         public List<string> Warnings { get; } = new List<string>();
+
+        /// <summary>Rows in the table read by this operator (RelOp TableCardinality), when the plan has it.</summary>
+        public double? TableCardinality { get; set; }
+        public List<PlanColumn> PredicateColumns { get; } = new List<PlanColumn>();
+        public List<PlanColumn> SeekColumns { get; } = new List<PlanColumn>();
+        public List<PlanColumn> OutputColumns { get; } = new List<PlanColumn>();
+        public bool HasSpill { get; set; }
+        public int SpillLevel { get; set; }
+        public bool NoJoinPredicate { get; set; }
+        public List<PlanColumn> ColumnsWithNoStatistics { get; } = new List<PlanColumn>();
+
+        /// <summary>The statement this node belongs to (set by the parser).</summary>
+        public PlanStatement Statement { get; set; }
 
         /// <summary>Text of the statement (root node only).</summary>
         public string StatementText { get; set; }
@@ -285,6 +356,20 @@ namespace SSMSPlus.Features.ExecutionPlan
         public string DegreeOfParallelism { get; set; }
         public string CompileTime { get; set; }
         public string MemoryGrantKb { get; set; }
+        public double? RequestedMemoryKb { get; set; }
+        public double? GrantedMemoryKb { get; set; }
+        public double? MaxUsedMemoryKb { get; set; }
+        public string MemoryGrantWarning { get; set; }
+
+        /// <summary>QueryTimeStats of actual plans (SQL Server 2016 SP1+), in ms.</summary>
+        public double? CpuTimeMs { get; set; }
+        public double? ElapsedTimeMs { get; set; }
+
+        /// <summary>Sum of the actual logical reads of the operators, when the plan has them.</summary>
+        public double? LogicalReads => Root == null || !Operators().Any(o => o.ActualLogicalReads.HasValue) ? (double?)null : Operators().Sum(o => o.ActualLogicalReads ?? 0);
+        public List<PlanStatisticsUsage> StatisticsUsage { get; } = new List<PlanStatisticsUsage>();
+        public List<PlanConvertIssue> Converts { get; } = new List<PlanConvertIssue>();
+        public List<PlanParameter> Parameters { get; } = new List<PlanParameter>();
 
         public string ShortText
         {
@@ -366,11 +451,64 @@ namespace SSMSPlus.Features.ExecutionPlan
 
             var grant = queryPlan.Element(Ns + "MemoryGrantInfo");
             if (grant != null)
+            {
                 s.MemoryGrantKb = (string)grant.Attribute("GrantedMemory") ?? (string)grant.Attribute("SerialDesiredMemory");
+                s.RequestedMemoryKb = N(grant, "RequestedMemory") ?? N(grant, "SerialDesiredMemory");
+                s.GrantedMemoryKb = N(grant, "GrantedMemory");
+                s.MaxUsedMemoryKb = N(grant, "MaxUsedMemory");
+            }
 
             var planWarnings = queryPlan.Element(Ns + "Warnings");
             if (planWarnings != null)
+            {
                 s.Warnings.AddRange(DescribeWarnings(planWarnings));
+                foreach (var c in planWarnings.Elements(Ns + "PlanAffectingConvert"))
+                    s.Converts.Add(new PlanConvertIssue { Issue = (string)c.Attribute("ConvertIssue"), Expression = (string)c.Attribute("Expression") });
+                var mgw = planWarnings.Element(Ns + "MemoryGrantWarning");
+                if (mgw != null)
+                    s.MemoryGrantWarning = (string)mgw.Attribute("GrantWarningKind");
+            }
+
+            var timeStats = queryPlan.Element(Ns + "QueryTimeStats");
+            if (timeStats != null)
+            {
+                s.CpuTimeMs = N(timeStats, "CpuTime");
+                s.ElapsedTimeMs = N(timeStats, "ElapsedTime");
+            }
+
+            var statsUsage = queryPlan.Element(Ns + "OptimizerStatsUsage");
+            if (statsUsage != null)
+            {
+                foreach (var si in statsUsage.Elements(Ns + "StatisticsInfo"))
+                {
+                    DateTime lastUpdate;
+                    s.StatisticsUsage.Add(new PlanStatisticsUsage
+                    {
+                        Database = (string)si.Attribute("Database"),
+                        Schema = (string)si.Attribute("Schema"),
+                        Table = (string)si.Attribute("Table"),
+                        Statistics = (string)si.Attribute("Statistics"),
+                        ModificationCount = N(si, "ModificationCount"),
+                        SamplingPercent = N(si, "SamplingPercent"),
+                        LastUpdate = DateTime.TryParse((string)si.Attribute("LastUpdate"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out lastUpdate) ? (DateTime?)lastUpdate : null,
+                    });
+                }
+            }
+
+            var parameters = queryPlan.Element(Ns + "ParameterList");
+            if (parameters != null)
+            {
+                foreach (var pr in parameters.Elements(Ns + "ColumnReference"))
+                {
+                    s.Parameters.Add(new PlanParameter
+                    {
+                        Name = (string)pr.Attribute("Column"),
+                        DataType = (string)pr.Attribute("ParameterDataType"),
+                        CompiledValue = (string)pr.Attribute("ParameterCompiledValue"),
+                        RuntimeValue = (string)pr.Attribute("ParameterRuntimeValue"),
+                    });
+                }
+            }
 
             foreach (var group in queryPlan.Descendants(Ns + "MissingIndexGroup"))
             {
@@ -425,6 +563,8 @@ namespace SSMSPlus.Features.ExecutionPlan
             }
 
             s.Root = root;
+            foreach (var n in root.DescendantsAndSelf())
+                n.Statement = s;
             return s;
         }
 
@@ -446,6 +586,7 @@ namespace SSMSPlus.Features.ExecutionPlan
 
             if (relOp.Attribute("EstimatedRowsRead") != null)
                 node.EstimatedRowsRead = D(relOp, "EstimatedRowsRead");
+            node.TableCardinality = N(relOp, "TableCardinality");
 
             node.EstimateExecutions = 1 + D(relOp, "EstimateRebinds") + D(relOp, "EstimateRewinds");
             node.EstimateRowsAllExecutions = node.EstimateRows * Math.Max(1, node.EstimateExecutions);
@@ -469,7 +610,17 @@ namespace SSMSPlus.Features.ExecutionPlan
 
             var warnings = relOp.Element(Ns + "Warnings");
             if (warnings != null)
+            {
                 node.Warnings.AddRange(DescribeWarnings(warnings));
+                node.NoJoinPredicate = (string)warnings.Attribute("NoJoinPredicate") == "1" || (string)warnings.Attribute("NoJoinPredicate") == "true";
+                foreach (var spill in warnings.Elements().Where(e => e.Name.LocalName.EndsWith("SpillDetails", StringComparison.Ordinal) || e.Name.LocalName == "SpillToTempDb"))
+                {
+                    node.HasSpill = true;
+                    node.SpillLevel = Math.Max(node.SpillLevel, (int)D(spill, "SpillLevel"));
+                }
+                foreach (var noStats in warnings.Elements(Ns + "ColumnsWithNoStatistics"))
+                    node.ColumnsWithNoStatistics.AddRange(noStats.Descendants(Ns + "ColumnReference").Select(c => ToColumn(c)));
+            }
 
             // Operator-specific content: everything below this RelOp that is not inside a child RelOp.
             var childRelOps = new List<XElement>();
@@ -479,7 +630,7 @@ namespace SSMSPlus.Features.ExecutionPlan
             XElement outputList = relOp.Element(Ns + "OutputList");
 
             foreach (var element in relOp.Elements())
-                Walk(element, childRelOps, ref obj, seek, ref predicate);
+                Walk(element, childRelOps, ref obj, seek, ref predicate, node);
 
             if (obj != null)
             {
@@ -498,6 +649,7 @@ namespace SSMSPlus.Features.ExecutionPlan
             if (outputList != null)
             {
                 node.OutputList = string.Join(", ", outputList.Elements(Ns + "ColumnReference").Select(ColumnName));
+                node.OutputColumns.AddRange(outputList.Elements(Ns + "ColumnReference").Select(c => ToColumn(c)));
             }
 
             node.Category = Categorize(node.PhysicalOp, node.LogicalOp);
@@ -565,7 +717,7 @@ namespace SSMSPlus.Features.ExecutionPlan
                 || op.StartsWith("clustered index ") || op.StartsWith("index ");
         }
 
-        private static void Walk(XElement element, List<XElement> childRelOps, ref XElement obj, List<string> seek, ref string predicate)
+        private static void Walk(XElement element, List<XElement> childRelOps, ref XElement obj, List<string> seek, ref string predicate, PlanNode node)
         {
             var name = element.Name;
             if (name == Ns + "RelOp")
@@ -586,6 +738,7 @@ namespace SSMSPlus.Features.ExecutionPlan
                 {
                     var range = scalar.Parent;
                     var cols = scalar.Elements(Ns + "ColumnReference").Select(ColumnName).ToList();
+                    node.SeekColumns.AddRange(scalar.Elements(Ns + "ColumnReference").Select(c => ToColumn(c, ScanOperatorCode((string)range?.Attribute("ScanType")))));
                     var values = range?.Element(Ns + "RangeExpressions")?.Elements(Ns + "ScalarOperator").Select(v => (string)v.Attribute("ScalarString")).ToList();
                     var scanType = (string)range?.Attribute("ScanType") ?? "EQ";
                     for (int i = 0; i < cols.Count; i++)
@@ -600,11 +753,61 @@ namespace SSMSPlus.Features.ExecutionPlan
             if (name == Ns + "Predicate" && predicate == null)
             {
                 predicate = (string)element.Element(Ns + "ScalarOperator")?.Attribute("ScalarString");
+                foreach (var c in element.Descendants(Ns + "ColumnReference"))
+                {
+                    if (c.Attribute("Column") == null || c.Ancestors(Ns + "RelOp").FirstOrDefault() != element.Ancestors(Ns + "RelOp").FirstOrDefault())
+                        continue;
+                    node.PredicateColumns.Add(PredicateColumn(c, element));
+                }
                 return;
             }
 
             foreach (var child in element.Elements())
-                Walk(child, childRelOps, ref obj, seek, ref predicate);
+                Walk(child, childRelOps, ref obj, seek, ref predicate, node);
+        }
+
+        private static string ScanOperatorCode(string scanType) => string.IsNullOrEmpty(scanType) ? "EQ" : scanType;
+
+        private static PlanColumn ToColumn(XElement c, string compareOp = null)
+        {
+            return new PlanColumn
+            {
+                Database = (string)c.Attribute("Database"),
+                Schema = (string)c.Attribute("Schema"),
+                Table = (string)c.Attribute("Table"),
+                Alias = (string)c.Attribute("Alias"),
+                Column = (string)c.Attribute("Column"),
+                CompareOp = compareOp,
+            };
+        }
+
+        /// <summary>
+        /// Column of a predicate with the comparison it is part of. Walks up to the nearest Compare / Like;
+        /// anything else on the way (Convert, Intrinsic, Arithmetic, UDF...) means the column is wrapped.
+        /// </summary>
+        private static PlanColumn PredicateColumn(XElement columnReference, XElement predicate)
+        {
+            var column = ToColumn(columnReference);
+            for (var e = columnReference.Parent; e != null && e != predicate; e = e.Parent)
+            {
+                var name = e.Name.LocalName;
+                if (name == "Identifier" || name == "ScalarOperator")
+                    continue;
+                if (name == "Compare")
+                {
+                    column.CompareOp = (string)e.Attribute("CompareOp");
+                    break;
+                }
+                if (name == "Intrinsic" && string.Equals((string)e.Attribute("FunctionName"), "like", StringComparison.OrdinalIgnoreCase))
+                {
+                    column.CompareOp = "LIKE";
+                    break;
+                }
+                if (name == "Logical")
+                    break;
+                column.Wrapped = true;
+            }
+            return column;
         }
 
         private static string ScanOperator(string scanType)
@@ -709,6 +912,15 @@ namespace SSMSPlus.Features.ExecutionPlan
                 return 0;
             double.TryParse(a.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out double v);
             return v;
+        }
+
+        private static double? N(XElement e, string attribute)
+        {
+            var a = e?.Attribute(attribute);
+            if (a == null)
+                return null;
+            double v;
+            return double.TryParse(a.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out v) ? (double?)v : null;
         }
 
         private static double? SumOrNull(List<XElement> threads, string attribute)

@@ -36,6 +36,11 @@
         private CommandEvents _globalCommandEvents;
         private HashSet<string> _knownQueryCommandKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private DateTime _lastTrackTimeUtc = DateTime.MinValue;
+        private string _lastTrackText;
+        private ISqlEditorService _editorService;
+
+        /// <summary>Raised (on a background thread) after new history items were saved.</summary>
+        public static event EventHandler ItemsSaved;
 
         public CommandEvents QueryExecuteEvent { get; private set; }
 
@@ -71,11 +76,14 @@
                         QueryExecuteEvent = cmdEvents;
 
                     hooked = true;
-                    _logger.LogInformation("Hooked into command: {CommandName} (Guid={Guid}, ID={ID})", cmdName, command.Guid, command.ID);
+                }
+                catch (ArgumentException)
+                {
+                    // The command does not exist in this SSMS version (SSMS 22 only has Query.Execute): expected.
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Command not found or could not hook: {CommandName}", cmdName);
+                    _logger.LogWarning(ex, "Could not hook command {CommandName}", cmdName);
                 }
             }
 
@@ -85,17 +93,15 @@
             {
                 _globalCommandEvents = dte2.Events.get_CommandEvents("{00000000-0000-0000-0000-000000000000}", 0);
                 _globalCommandEvents.BeforeExecute += GlobalCommandEvents_BeforeExecute;
-                _logger.LogInformation("Hooked into global command events as fallback");
             }
             catch (Exception ex)
             {
+                _globalCommandEvents = null;
                 _logger.LogWarning(ex, "Could not hook global command events");
             }
 
-            if (!hooked)
-            {
-                _logger.LogError("Could not hook into any specific query execution command. Relying on global command events fallback.");
-            }
+            if (!hooked && _globalCommandEvents == null)
+                _logger.LogError("Could not hook any query execution command: the execution history will not record queries.");
         }
 
         private void GlobalCommandEvents_BeforeExecute(string Guid, int ID, object CustomIn, object CustomOut, ref bool CancelDefault)
@@ -146,16 +152,21 @@
         {
             try
             {
-                // Deduplication: avoid recording same execution from both specific and global hooks
-                var now = DateTime.UtcNow;
-                if ((now - _lastTrackTimeUtc).TotalMilliseconds < 500)
-                    return;
-                _lastTrackTimeUtc = now;
-
                 string queryText = GetQueryText();
 
                 if (string.IsNullOrWhiteSpace(queryText))
+                {
+                    _logger.LogWarning("Query execution detected but the query text is empty, skipping history entry");
                     return;
+                }
+
+                // Deduplication: the same execution can be reported by both the specific and the global hook.
+                // Only the same text within 500 ms is a duplicate; different queries are always recorded.
+                var now = DateTime.UtcNow;
+                if ((now - _lastTrackTimeUtc).TotalMilliseconds < 500 && string.Equals(queryText, _lastTrackText, StringComparison.Ordinal))
+                    return;
+                _lastTrackTimeUtc = now;
+                _lastTrackText = queryText;
 
                 // Try primary method: ServiceCache
                 UIConnectionInfo connInfo = null;
@@ -188,14 +199,19 @@
                     return;
                 }
 
-                string database = null;
-                try
+                // The database selected in the query window right now (changes with the database list and USE);
+                // the connection options only keep the database the window was opened with.
+                string database = GetCurrentDatabase();
+                if (string.IsNullOrEmpty(database))
                 {
-                    database = connInfo.AdvancedOptions?["DATABASE"];
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not read DATABASE from AdvancedOptions");
+                    try
+                    {
+                        database = connInfo.AdvancedOptions?["DATABASE"];
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Could not read DATABASE from AdvancedOptions");
+                    }
                 }
 
                 var queryItem = new QueryItem()
@@ -207,11 +223,11 @@
                     ExecutionDateUtc = DateTime.UtcNow
                 };
 
-                _logger.LogInformation("Enqueued {@quetyItem}", queryItem.Query);
+                _logger.LogDebug("Enqueued {Query}", queryItem.Query);
 
                 itemsQueue.Enqueue(queryItem);
 
-                Task.Delay(1000).ContinueWith((t) => this.SavePendingItems());
+                _ = SaveSoonAsync();
             }
             catch (Exception ex)
             {
@@ -219,10 +235,31 @@
             }
         }
 
+        private ISqlEditorService GetEditorService()
+        {
+            if (_editorService == null)
+                _editorService = _packageProvider.AsyncPackage.GetServiceAsync(typeof(SSqlEditorService)).Result as ISqlEditorService;
+            return _editorService;
+        }
+
+        private string GetCurrentDatabase()
+        {
+            try
+            {
+                // The database selected in the active editor (toolbar list / USE). GetCurrentConnection() would
+                // only give the database of the connection string, i.e. the one the window was opened with.
+                return SqlEditorAccess.GetCurrentDatabase(SqlEditorAccess.GetCurrentEditor(GetEditorService()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read the current database of the query window");
+                return null;
+            }
+        }
+
         private UIConnectionInfo GetConnectionInfoFromEditorService()
         {
-            var editorService = _packageProvider.AsyncPackage
-                .GetServiceAsync(typeof(SSqlEditorService)).Result as ISqlEditorService;
+            var editorService = GetEditorService();
             if (editorService == null)
                 return null;
 
@@ -252,7 +289,24 @@
             return queryText;
         }
 
-        private async Task SavePendingItems()
+        private async Task SaveSoonAsync()
+        {
+            try
+            {
+                await Task.Delay(1000).ConfigureAwait(false);
+                await SavePendingItemsAsync(0).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while saving the execution history");
+            }
+        }
+
+        /// <summary>
+        /// Saves the queued items. A failed save (for example the history database locked by another SSMS
+        /// instance) is logged and retried a few times instead of losing the items.
+        /// </summary>
+        private async Task SavePendingItemsAsync(int attempt)
         {
             List<QueryItem> pendingItems = new List<QueryItem>();
             lock (itemsQueue)
@@ -264,7 +318,26 @@
                 }
             }
 
-            await _queryItemRepository.Insert(pendingItems);
+            if (pendingItems.Count == 0)
+                return;
+
+            try
+            {
+                await _queryItemRepository.Insert(pendingItems).ConfigureAwait(false);
+                ItemsSaved?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not save {Count} history item(s) (attempt {Attempt})", pendingItems.Count, attempt + 1);
+                if (attempt >= 5)
+                    return;
+
+                foreach (var item in pendingItems)
+                    itemsQueue.Enqueue(item);
+
+                await Task.Delay(2000 * (attempt + 1)).ConfigureAwait(false);
+                await SavePendingItemsAsync(attempt + 1).ConfigureAwait(false);
+            }
         }
     }
 }

@@ -17,3 +17,5 @@ TestResults/
 /**/*.Cache
 # build output
 /dist/
+# previews made by Claude, not part of the repo
+/Claude outputs/

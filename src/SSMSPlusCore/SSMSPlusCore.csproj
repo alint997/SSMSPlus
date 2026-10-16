@@ -211,6 +211,7 @@
     <Compile Include="Integration\PackageProvider.cs" />
     <Compile Include="Integration\ToolWindowClipboardCommands.cs" />
     <Compile Include="Integration\ServiceCacheIntegration.cs" />
+    <Compile Include="Integration\SqlEditorAccess.cs" />
     <Compile Include="Messaging\ReportMessage.cs" />
     <Compile Include="Messaging\ReportMessageLevel.cs" />
     <Compile Include="ServiceCollectionExtension.cs" />

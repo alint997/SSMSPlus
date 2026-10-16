@@ -4,11 +4,15 @@ namespace SSMSPlus.Features.ExecutionPlan
     using ICSharpCode.AvalonEdit.Highlighting;
     using Microsoft.VisualStudio.PlatformUI;
     using Microsoft.VisualStudio.Shell;
+    using SSMSPlus.Features.Advisor;
+    using SSMSPlusCore.Ui.Extensions;
     using System;
     using System.Collections.Generic;
     using System.Globalization;
     using System.IO;
     using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
     using System.Windows;
     using System.Windows.Controls;
     using System.Windows.Controls.Primitives;
@@ -45,7 +49,26 @@ namespace SSMSPlus.Features.ExecutionPlan
         private readonly TextBlock _busy = new TextBlock();
         private readonly Button _cancel;
 
+        private readonly AdvisorView _advisor = new AdvisorView();
+        private readonly TabItem _advisorTab = new TabItem { Header = "Advisor" };
+        private readonly ScriptTextView _annotated = new ScriptTextView("The statement text with what the plan does on each table (rows, operator, cost, estimated -> actual rows, statistics, findings).", "PlanAnnotatedQuery");
+        private readonly ScriptTextView _indexAdvice = new ScriptTextView("Index suggestions of all statements merged per table and compared with the existing indexes.", "PlanIndexAdvice");
+        private readonly CompareView _compare = new CompareView();
+        private readonly TabItem _indexTab = new TabItem { Header = "Index advice" };
+        private readonly TabItem _compareTab = new TabItem { Header = "Compare" };
+        private readonly Button _baselineButton;
+
+        // Stage 4: the current plan with its advisor result (kept by the Compare tab), and the texts for the report.
+        private PlanSnapshot _current;
+        private string _annotatedText;
+        private string _indexText;
+
+        private readonly Button _refresh;
+
         private PlanDocument _document;
+        private List<AdvisorFinding> _findings = new List<AdvisorFinding>();
+        private AdvisorServerInfo _serverInfo;
+        private CancellationTokenSource _serverRead;
 
         public PlanViewerControl()
         {
@@ -72,8 +95,12 @@ namespace SSMSPlus.Features.ExecutionPlan
             DockPanel.SetDock(toolbar, Dock.Top);
             root.Children.Add(toolbar);
 
-            toolbar.Children.Add(ToolButton("Estimated plan", "Get the estimated plan of the selected text (or the whole script) in the active query window. Nothing is executed.", (s, e) => RequestPlan?.Invoke(false)));
-            toolbar.Children.Add(ToolButton("Actual plan", "Execute the selected text (or the whole script) in the active query window and show the actual plan. Data changes are rolled back.", (s, e) => RequestPlan?.Invoke(true)));
+            _refresh = ToolButton("Refresh", RefreshHint, (s, e) => RefreshRequested?.Invoke());
+            _refresh.IsEnabled = false;
+            ToolTipService.SetShowOnDisabled(_refresh, true);
+            toolbar.Children.Add(_refresh);
+            toolbar.Children.Add(ToolButton("Estimated plan", "Get the estimated plan of the selected text (or the whole script) in the active query window - or, when this window is active, in the query window of the last plan. Nothing is executed.", (s, e) => RequestPlan?.Invoke(false)));
+            toolbar.Children.Add(ToolButton("Actual plan", "Execute the selected text (or the whole script) in the active query window - or, when this window is active, in the query window of the last plan - and show the actual plan. Data changes are rolled back.", (s, e) => RequestPlan?.Invoke(true)));
             toolbar.Children.Add(ToolButton("Open .sqlplan...", "Open a plan saved from SSMS (.sqlplan or .xml).", (s, e) => OpenFile()));
             toolbar.Children.Add(ToolButton("Paste XML", "Show a plan copied to the clipboard (in SSMS: right click a plan > Show Execution Plan XML, then copy).", (s, e) => PasteXml()));
             toolbar.Children.Add(ToolSeparator());
@@ -103,6 +130,10 @@ namespace SSMSPlus.Features.ExecutionPlan
             _copyIndex = ToolButton("Copy missing index", "Copy the CREATE INDEX statement(s) suggested by the optimizer", (s, e) => CopyMissingIndexes());
             _copyIndex.Visibility = Visibility.Collapsed;
             toolbar.Children.Add(_copyIndex);
+
+            _baselineButton = ToolButton("Set as baseline", BaselineHint, (s, e) => SetBaseline());
+            toolbar.Children.Add(_baselineButton);
+            toolbar.Children.Add(ToolButton("Export report...", "Save a report (HTML) with the statements, the advisor findings, the annotated query, the index advice and the comparison.", (s, e) => ExportReport()));
 
             _busy.VerticalAlignment = VerticalAlignment.Center;
             _busy.Margin = new Thickness(10, 0, 4, 0);
@@ -166,19 +197,70 @@ namespace SSMSPlus.Features.ExecutionPlan
             main.Children.Add(detailsScroll);
 
             _tabs.Items.Add(new TabItem { Header = "Tree", Content = BuildTreeArea() });
+            _advisorTab.Content = _advisor;
+            _tabs.Items.Add(_advisorTab);
+            _tabs.Items.Add(new TabItem { Header = "Annotated query", Content = _annotated });
+            _indexTab.Content = _indexAdvice;
+            _tabs.Items.Add(_indexTab);
+            _compareTab.Content = _compare;
+            _compare.HeaderChanged += header => _compareTab.Header = header;
+            _compare.PinnedChanged += UpdateBaselineButton;
+            _tabs.Items.Add(_compareTab);
             _tabs.Items.Add(new TabItem { Header = "Operators", Content = BuildOperatorsGrid() });
             _tabs.Items.Add(new TabItem { Header = "XML", Content = BuildXmlEditor() });
 
             _canvas.SelectedNodeChanged += (s, node) => ShowDetails(node);
+            _advisor.FindingSelected += f => SelectFinding(f, false);
+            _advisor.ShowInTreeRequested += f => SelectFinding(f, true);
+            _advisor.ReadServerRequested = ReadServerInfoForCurrent;
+            _annotated.ReadServerRequested = ReadServerInfoForCurrent;
+            _indexAdvice.ReadServerRequested = ReadServerInfoForCurrent;
+
+            // F5 in the plan window: Refresh (the SSMS F5 / Execute only applies to query windows).
+            PreviewKeyDown += (s, e) =>
+            {
+                if (e.Key == Key.F5 && Keyboard.Modifiers == ModifierKeys.None && _refresh.IsEnabled && RefreshRequested != null)
+                {
+                    e.Handled = true;
+                    RefreshRequested();
+                }
+            };
 
             UpdateZoomText();
             ShowEmpty();
+        }
+
+        private const string RefreshHint = "Get the plan again (F5): same query window, same kind of plan (estimated / actual), with its current text or selection. The new plan is compared with the previous one (or with the baseline) in the Compare tab.";
+
+        /// <summary>Raised by Refresh / F5: get the last plan again from the same query window.</summary>
+        public Action RefreshRequested { get; set; }
+
+        /// <summary>Enables Refresh and shows in its tooltip what will be refreshed (e.g. "estimated plan of SQLQuery1.sql").</summary>
+        public void SetRefreshTarget(string target)
+        {
+            _refresh.IsEnabled = !string.IsNullOrEmpty(target);
+            _refresh.ToolTip = string.IsNullOrEmpty(target) ? RefreshHint : "Refresh the " + target + " (F5). Uses the current text or selection of that query window; the new plan is compared with the previous one (or the baseline) in the Compare tab.";
         }
 
         /// <summary>Raised by the Estimated / Actual buttons; the argument is true for the actual plan.</summary>
         public Action<bool> RequestPlan { get; set; }
 
         public Action CancelRequested { get; set; }
+
+        /// <summary>Reads catalog information (statistics, indexes, row counts) for the tables of a plan; set by PlanCommands.</summary>
+        public Func<PlanDocument, CancellationToken, Task<AdvisorServerInfo>> ReadServerInfo { get; set; }
+
+        /// <summary>Opens a script in a new query window; set by PlanCommands.</summary>
+        public Action<string> OpenScript
+        {
+            get => _advisor.OpenScriptRequested;
+            set
+            {
+                _advisor.OpenScriptRequested = value;
+                _annotated.OpenScriptRequested = value;
+                _indexAdvice.OpenScriptRequested = value;
+            }
+        }
 
         public void SetBusy(string message, bool cancellable)
         {
@@ -194,13 +276,17 @@ namespace SSMSPlus.Features.ExecutionPlan
             _info.Foreground = new SolidColorBrush(Color.FromRgb(0xE5, 0x48, 0x3B));
         }
 
-        public void ShowDocument(PlanDocument document)
+        /// <param name="readServerInfo">Also read statistics and indexes from the server for the advisor (plans just obtained from the server).</param>
+        public void ShowDocument(PlanDocument document, bool readServerInfo = false)
         {
             SetBusy(null, false);
             _info.SetResourceReference(TextBlock.ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            _serverRead?.Cancel();
+            _serverInfo = null;
             _document = document;
             _statements.ItemsSource = document?.Statements;
             _xml.Text = document?.Xml ?? string.Empty;
+            RunAdvisor();
 
             if (document == null || document.Statements.Count == 0)
             {
@@ -216,11 +302,24 @@ namespace SSMSPlus.Features.ExecutionPlan
             _statements.SelectedItem = first; // raises SelectionChanged -> ShowStatement
 
             _tabs.SelectedIndex = 0;
+
+            if (readServerInfo)
+                ReadServerInfoForCurrent();
         }
 
         private void ShowEmpty()
         {
             _canvas.ShowPlan(null);
+            _findings = new List<AdvisorFinding>();
+            _advisor.SetFindings(null, false);
+            _advisor.SetStatus(null, false);
+            _advisorTab.Header = "Advisor";
+            _indexTab.Header = "Index advice";
+            _annotated.SetText(null, false);
+            _indexAdvice.SetText(null, false);
+            _current = null;
+            _annotatedText = null;
+            _indexText = null;
             _operators.ItemsSource = null;
             _details.Children.Clear();
             _copyIndex.Visibility = Visibility.Collapsed;
@@ -234,6 +333,21 @@ namespace SSMSPlus.Features.ExecutionPlan
 
             _canvas.ShowPlan(statement);
             _operators.ItemsSource = statement.Operators().OrderByDescending(o => o.CostPercent).ThenBy(o => o.NodeId).Select(o => new OperatorRow(o)).ToList();
+            UpdateInfo(statement);
+
+            _canvas.Select(statement.Root, false);
+            Defer(() =>
+            {
+                _treeScroll.ScrollToHorizontalOffset(Math.Max(0, (_canvas.Width * _zoom.ScaleX - _treeScroll.ViewportWidth) / 2));
+                _treeScroll.ScrollToTop();
+                UpdateOverviewViewport();
+            });
+        }
+
+        private void UpdateInfo(PlanStatement statement)
+        {
+            if (statement == null)
+                return;
 
             var parts = new List<string>
             {
@@ -253,17 +367,184 @@ namespace SSMSPlus.Features.ExecutionPlan
                 parts.Add(warnings + " node(s) with warnings ⚠");
             if (statement.MissingIndexes.Count > 0)
                 parts.Add(string.Format(CultureInfo.CurrentCulture, "missing index (impact {0:0.#}%)", statement.MissingIndexes.Max(m => m.Impact)));
+            if (_findings.Count > 0)
+                parts.Add("advisor: " + AdvisorView.Summary(_findings));
 
             _info.Text = string.Join("   |   ", parts);
             _copyIndex.Visibility = statement.MissingIndexes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
 
-            _canvas.Select(statement.Root, false);
-            Defer(() =>
+        // ---------------------------------------------------------------- advisor
+
+        private void RunAdvisor()
+        {
+            AdvisorResult result = null;
+            try
             {
-                _treeScroll.ScrollToHorizontalOffset(Math.Max(0, (_canvas.Width * _zoom.ScaleX - _treeScroll.ViewportWidth) / 2));
-                _treeScroll.ScrollToTop();
-                UpdateOverviewViewport();
+                result = QueryAdvisor.AnalyzeAll(_document, _serverInfo);
+                _findings = result.Findings;
+                if (_serverInfo == null)
+                {
+                    _advisor.SetStatus(PlanTable.From(_document).Any(t => !t.IsTemporary)
+                        ? "Statistics come from the plan only. \"Read from server\" adds row counts, all statistics and the index definitions."
+                        : null, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _findings = new List<AdvisorFinding>();
+                _advisor.SetStatus("The advisor failed: " + ex.Message, true);
+            }
+
+            bool canRead = ReadServerInfo != null && PlanTable.From(_document).Any(t => !t.IsTemporary);
+            _advisor.SetFindings(_document == null ? null : _findings, canRead);
+            int high = _findings.Count(f => f.Severity == AdvisorSeverity.High);
+            _advisorTab.Header = _findings.Count == 0 ? "Advisor" : string.Format(CultureInfo.CurrentCulture, high > 0 ? "Advisor ({0}, {1} high)" : "Advisor ({0})", _findings.Count, high);
+
+            // Annotated query and consolidated index advice (stage 3).
+            try
+            {
+                _annotatedText = QueryAnnotator.Annotate(_document, _serverInfo, _findings);
+                _annotated.SetText(_annotatedText, canRead && _serverInfo == null);
+                var advice = IndexAdvisor.Recommend(result?.IndexCandidates ?? new List<IndexCandidate>(), _serverInfo);
+                _indexText = _document == null ? null : IndexAdvisor.Report(advice, _serverInfo);
+                _indexAdvice.SetText(_indexText, canRead && _serverInfo == null);
+                int suggested = advice.Sum(a => a.Recommendations.Count(r => r.Action != IndexAction.AlreadyCovered));
+                _indexTab.Header = suggested == 0 ? "Index advice" : string.Format(CultureInfo.CurrentCulture, "Index advice ({0})", suggested);
+            }
+            catch (Exception ex)
+            {
+                _annotated.SetText("-- The annotation failed: " + ex.Message, false);
+                _indexAdvice.SetText("-- The index advice failed: " + ex.Message, false);
+            }
+
+            // Stage 4: keep the current plan for the comparison (the snapshot keeps its time across server reads).
+            if (_document != null && result != null)
+            {
+                if (_current == null || !ReferenceEquals(_current.Document, _document))
+                    _current = new PlanSnapshot { Document = _document, Result = result };
+                else
+                    _current.Result = result;
+                _compare.AddOrUpdate(_current);
+            }
+        }
+
+        // ---------------------------------------------------------------- compare with baseline, report
+
+        private const string BaselineHint = "Pin this plan as the baseline: the next plans (Refresh / F5) are compared with it in the Compare tab. Without a baseline each plan is compared with the previous one.";
+
+        private void SetBaseline()
+        {
+            if (_current == null)
+            {
+                ShowError("Get or open a plan first, then set it as the baseline.");
+                return;
+            }
+
+            _compare.Pin(_current);
+        }
+
+        private void UpdateBaselineButton()
+        {
+            var pinned = _compare.Pinned;
+            _baselineButton.Content = pinned == null ? "Set as baseline" : "Baseline #" + pinned.Number;
+            _baselineButton.ToolTip = pinned == null
+                ? BaselineHint
+                : "Baseline: " + pinned.Label + ". Click to pin the current plan instead; \"Clear baseline\" in the Compare tab unpins it.";
+        }
+
+        private void ExportReport()
+        {
+            if (_current == null)
+            {
+                ShowError("Get or open a plan first, then export the report.");
+                return;
+            }
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export query report",
+                Filter = "HTML report (*.html)|*.html",
+                FileName = "SSMSPlus-query-report-" + DateTime.Now.ToString("yyyyMMdd-HHmm", CultureInfo.InvariantCulture) + ".html",
+            };
+            if (dialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var html = AdvisorReport.BuildHtml(_current.Document, _current.Result, _serverInfo, _annotatedText, _indexText, _compare.Comparison);
+                File.WriteAllText(dialog.FileName, html, new System.Text.UTF8Encoding(false));
+                SetBusy("Report saved: " + dialog.FileName, false);
+            }
+            catch (Exception ex)
+            {
+                ShowError("Could not save the report: " + ex.Message);
+            }
+        }
+
+        private void ReadServerInfoForCurrent()
+        {
+            var document = _document;
+            var reader = ReadServerInfo;
+            if (document == null || reader == null)
+                return;
+
+            _serverRead?.Cancel();
+            var cts = new CancellationTokenSource();
+            _serverRead = cts;
+            _advisor.SetStatus("Reading statistics and indexes from the server...", false);
+
+            _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                try
+                {
+                    var info = await reader(document, cts.Token);
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    if (cts.IsCancellationRequested || !ReferenceEquals(document, _document) || info == null)
+                        return;
+
+                    _serverInfo = info;
+                    RunAdvisor();
+                    UpdateInfo(_statements.SelectedItem as PlanStatement);
+
+                    int tables = info.Tables.Count();
+                    if (info.Errors.Count > 0)
+                        _advisor.SetStatus(string.Join(" ", info.Errors), true);
+                    else if (tables == 0)
+                        _advisor.SetStatus("None of the tables of the plan was found on " + info.Server + ".", true);
+                    else
+                        _advisor.SetStatus(string.Format(CultureInfo.CurrentCulture, "Statistics and indexes of {0} table(s) read from {1} at {2:HH:mm:ss}.", tables, info.Server, info.ReadAt), false);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    if (ReferenceEquals(document, _document))
+                        _advisor.SetStatus("Could not read from the server: " + ex.Message, true);
+                }
             });
+        }
+
+        /// <summary>Shows the operator of a finding: details panel only, or selected in the Tree tab.</summary>
+        private void SelectFinding(AdvisorFinding finding, bool showTree)
+        {
+            if (finding?.Node == null)
+                return;
+
+            if (finding.Statement != null && !ReferenceEquals(_statements.SelectedItem, finding.Statement))
+                _statements.SelectedItem = finding.Statement;
+
+            if (showTree)
+            {
+                _tabs.SelectedIndex = 0;
+                Defer(() => _canvas.Select(finding.Node, true));
+            }
+            else
+            {
+                _canvas.Select(finding.Node, false);
+            }
         }
 
         /// <summary>Runs an action on the UI thread after the current layout pass (scrolling needs the new sizes).</summary>
@@ -492,6 +773,7 @@ namespace SSMSPlus.Features.ExecutionPlan
             _xml.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("XML");
             _xml.SetResourceReference(Control.BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
             _xml.SetResourceReference(Control.ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            EditorZoomBehavior.SetZoomKey(_xml, "PlanXml");
             return _xml;
         }
 

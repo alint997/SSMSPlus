@@ -13,5 +13,10 @@ namespace Demo.Services
         {
             return;
         }
+
+        void IServiceCacheIntegration.OpenScriptInNewWindow(string script, string server, string database)
+        {
+            return;
+        }
     }
 }

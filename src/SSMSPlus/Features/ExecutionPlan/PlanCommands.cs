@@ -5,6 +5,7 @@ namespace SSMSPlus.Features.ExecutionPlan
     using Microsoft.SqlServer.Management.UI.VSIntegration;
     using Microsoft.SqlServer.TransactSql.ScriptDom;
     using Microsoft.VisualStudio.Shell;
+    using SSMSPlus.Features.Advisor;
     using SSMSPlusCore.Integration;
     using SSMSPlusCore.Ui.Dialogs;
     using System;
@@ -31,6 +32,17 @@ namespace SSMSPlus.Features.ExecutionPlan
         private readonly DTE2 _dte;
         private CancellationTokenSource _running;
         private static PlanCommands _instance;
+
+        // Connection that produced the last plan, reused by the advisor to read statistics and indexes.
+        private PlanDocument _lastDocument;
+        private QueryWindowConnection.Result _lastConnection;
+
+        // Query window of the last plan request, for Refresh and for the Estimated / Actual buttons of the plan
+        // window (when they are clicked the active document is not a query window).
+        private string _lastQueryName;
+        private string _lastQueryFullName;
+        private string _lastMoniker;
+        private bool? _lastActual;
 
         private PlanCommands(AsyncPackage package, DTE2 dte)
         {
@@ -86,7 +98,15 @@ namespace SSMSPlus.Features.ExecutionPlan
             });
         }
 
-        private void Run(bool actual)
+        /// <summary>Gets the last plan again (same query window, same kind), with the current text or selection of that window.</summary>
+        private void Refresh()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            Run(_lastActual ?? false, refresh: true);
+        }
+
+        /// <param name="refresh">Use the query window of the last request even when another query window is active.</param>
+        private void Run(bool actual, bool refresh = false)
         {
             _ = _package.JoinableTaskFactory.RunAsync(async () =>
             {
@@ -95,7 +115,7 @@ namespace SSMSPlus.Features.ExecutionPlan
                 try
                 {
                     // A plan XML document (SSMS "Show Execution Plan XML", .sqlplan): show it directly.
-                    var fromDocument = TryReadPlanFromActiveDocument();
+                    var fromDocument = refresh ? null : TryReadPlanFromActiveDocument();
                     if (fromDocument != null)
                     {
                         viewer = await GetViewerAsync();
@@ -103,7 +123,34 @@ namespace SSMSPlus.Features.ExecutionPlan
                         return;
                     }
 
-                    string script = GetQueryText(out string documentName);
+                    // The active query window, or - for Refresh, and when the buttons of the plan window are used and
+                    // the active document is not a query window - the query window of the last request.
+                    string script = null;
+                    string documentName = null;
+                    bool fromLast = refresh;
+                    var activeDocument = refresh ? null : _dte.ActiveDocument;
+                    string activeFullName = SafeFullName(activeDocument);
+                    if (!refresh)
+                    {
+                        script = GetQueryText(activeDocument, out documentName);
+                        fromLast = string.IsNullOrWhiteSpace(script) && !IsQueryWindow(activeDocument);
+                    }
+
+                    if (fromLast)
+                    {
+                        var last = FindLastQueryDocument();
+                        if (last == null)
+                        {
+                            viewer = await GetViewerAsync();
+                            viewer.ShowError(_lastQueryName == null
+                                ? "Open a query window with a query (or select part of it) and try again."
+                                : "The query window " + _lastQueryName + " is no longer open. Open a query window with a query and try again.");
+                            return;
+                        }
+
+                        script = GetQueryText(last, out documentName);
+                    }
+
                     if (string.IsNullOrWhiteSpace(script))
                     {
                         viewer = await GetViewerAsync();
@@ -126,7 +173,9 @@ namespace SSMSPlus.Features.ExecutionPlan
                             return;
                     }
 
-                    var connection = QueryWindowConnection.GetActive(await GetEditorConnectionInfoAsync());
+                    var connection = fromLast
+                        ? await GetConnectionForMonikerAsync(_lastMoniker)
+                        : await GetActiveConnectionAsync();
                     await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
                     viewer = await GetViewerAsync();
                     if (connection.Error != null)
@@ -158,7 +207,18 @@ namespace SSMSPlus.Features.ExecutionPlan
                     }
 
                     var document = ShowPlanParser.Parse(plans, documentName + " – " + target);
-                    viewer.ShowDocument(document);
+                    _lastDocument = document;
+                    _lastConnection = connection;
+                    _lastActual = actual;
+                    if (!fromLast)
+                    {
+                        _lastQueryName = documentName;
+                        _lastQueryFullName = activeFullName;
+                        _lastMoniker = connection.Moniker;
+                    }
+
+                    viewer.ShowDocument(document, readServerInfo: true);
+                    viewer.SetRefreshTarget((actual ? "actual" : "estimated") + " plan of " + _lastQueryName);
                 }
                 catch (OperationCanceledException)
                 {
@@ -205,35 +265,200 @@ namespace SSMSPlus.Features.ExecutionPlan
 
             var viewer = window.Viewer;
             viewer.RequestPlan = actual => Run(actual);
+            viewer.RefreshRequested = Refresh;
             viewer.CancelRequested = () => _running?.Cancel();
+            viewer.ReadServerInfo = ReadServerInfoAsync;
+            viewer.OpenScript = OpenScript;
             return viewer;
         }
 
-        /// <summary>UIConnectionInfo of the active query editor through ISqlEditorService (SSMS 22), or null.</summary>
-        private async Task<object> GetEditorConnectionInfoAsync()
+        /// <summary>
+        /// Catalog information for the advisor: with the connection that produced the plan, or, for plans opened
+        /// from a file / the clipboard / the Blocking Monitor, with the connection of the active query window.
+        /// </summary>
+        private async Task<AdvisorServerInfo> ReadServerInfoAsync(PlanDocument document, CancellationToken cancellationToken)
         {
+            await _package.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            var connection = ReferenceEquals(document, _lastDocument) ? _lastConnection : null;
+            if (connection == null)
+            {
+                connection = await GetActiveConnectionAsync();
+                await _package.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            }
+
+            if (connection.Error != null)
+            {
+                var failed = new AdvisorServerInfo { Server = connection.Server };
+                failed.Errors.Add(connection.Error);
+                return failed;
+            }
+
+            return await Task.Run(() => AdvisorCatalogReader.ReadAsync(connection.ConnectionString, connection.Server, document, cancellationToken), cancellationToken);
+        }
+
+        /// <summary>Opens a new query window (SSMS "New Query") with the script; falls back to the clipboard.</summary>
+        private void OpenScript(string script)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
             try
             {
-                var editorService = await _package.GetServiceAsync(typeof(SSqlEditorService)) as ISqlEditorService;
-                if (editorService == null)
-                    return null;
-
-                var details = editorService.GetActiveEditorDetails();
-                if (details != null && !string.IsNullOrEmpty(details.Moniker))
-                    return editorService.GetUIConnectionInfoForSpecificQueryEditor(details.Moniker);
+                var before = _dte.ActiveDocument;
+                _dte.ExecuteCommand("File.NewQuery");
+                var document = _dte.ActiveDocument;
+                if (document != null && !ReferenceEquals(document, before) && document.Object("TextDocument") is TextDocument text)
+                {
+                    text.Selection.Insert(script);
+                    return;
+                }
             }
             catch
             {
             }
 
-            return null;
+            try
+            {
+                Clipboard.SetDataObject(script, true);
+                SsmsPlusMessageBox.ShowInfo("Query Advisor", "Could not open a new query window. The script was copied to the clipboard.");
+            }
+            catch (Exception ex)
+            {
+                SsmsPlusMessageBox.ShowError("Query Advisor", ex.Message);
+            }
         }
 
-        private string GetQueryText(out string documentName)
+        /// <summary>
+        /// Connection of the active query window, with the database currently selected in it (the database list of
+        /// the toolbar), not only the one the window was opened with.
+        /// </summary>
+        private async Task<QueryWindowConnection.Result> GetActiveConnectionAsync()
+        {
+            object info = null;
+            string moniker = null;
+            ISqlEditorService editorService = null;
+            try
+            {
+                editorService = await _package.GetServiceAsync(typeof(SSqlEditorService)) as ISqlEditorService;
+                if (editorService != null)
+                {
+                    var details = editorService.GetActiveEditorDetails();
+                    if (details != null && !string.IsNullOrEmpty(details.Moniker))
+                    {
+                        moniker = details.Moniker;
+                        info = editorService.GetUIConnectionInfoForSpecificQueryEditor(moniker);
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var connection = QueryWindowConnection.GetActive(info);
+            connection.Moniker = moniker;
+            return QueryWindowConnection.WithDatabase(connection, CurrentDatabase(editorService, moniker));
+        }
+
+        /// <summary>Connection of a query window that is not necessarily the active one, by its moniker.</summary>
+        private async Task<QueryWindowConnection.Result> GetConnectionForMonikerAsync(string moniker)
+        {
+            if (string.IsNullOrEmpty(moniker))
+                return await GetActiveConnectionAsync();
+
+            object info = null;
+            ISqlEditorService editorService = null;
+            try
+            {
+                editorService = await _package.GetServiceAsync(typeof(SSqlEditorService)) as ISqlEditorService;
+                if (editorService != null)
+                    info = editorService.GetUIConnectionInfoForSpecificQueryEditor(moniker);
+            }
+            catch
+            {
+            }
+
+            await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (info == null)
+                return new QueryWindowConnection.Result { Error = "The query window " + _lastQueryName + " is not connected. Connect it to a server first." };
+
+            var connection = QueryWindowConnection.FromConnectionInfo(info);
+            connection.Moniker = moniker;
+            return QueryWindowConnection.WithDatabase(connection, CurrentDatabase(editorService, moniker));
+        }
+
+        /// <summary>Database selected in the query window with this moniker; null when it cannot be read.</summary>
+        private static string CurrentDatabase(object editorService, string moniker)
+        {
+            try
+            {
+                var editor = SqlEditorAccess.GetCurrentEditor(editorService);
+                if (editor == null || string.IsNullOrEmpty(moniker)
+                    || !string.Equals(SqlEditorAccess.GetMoniker(editor), moniker, StringComparison.OrdinalIgnoreCase))
+                    return null;
+                return SqlEditorAccess.GetCurrentDatabase(editor);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool IsQueryWindow(Document document)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            try
+            {
+                return document?.Object("TextDocument") is TextDocument;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string SafeFullName(Document document)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            try
+            {
+                return document?.FullName;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>The query window of the last plan request, if it is still open (compared by name, not by reference).</summary>
+        private Document FindLastQueryDocument()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_lastQueryName == null)
+                return null;
+
+            try
+            {
+                Document byName = null;
+                foreach (Document document in _dte.Documents)
+                {
+                    if (!string.IsNullOrEmpty(_lastQueryFullName)
+                        && string.Equals(SafeFullName(document), _lastQueryFullName, StringComparison.OrdinalIgnoreCase))
+                        return document;
+                    if (byName == null && string.Equals(document.Name, _lastQueryName, StringComparison.OrdinalIgnoreCase))
+                        byName = document;
+                }
+
+                return byName;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetQueryText(Document document, out string documentName)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             documentName = null;
-            var document = _dte.ActiveDocument;
             if (document == null)
                 return null;
 
