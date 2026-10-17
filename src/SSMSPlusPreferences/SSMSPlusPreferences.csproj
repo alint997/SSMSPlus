@@ -42,28 +42,34 @@
       <HintPath>..\packages\Microsoft.VisualStudio.CoreUtility.15.0.26228\lib\net45\Microsoft.VisualStudio.CoreUtility.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Imaging">
-      <HintPath>..\SSMSPlus\assemblies\Microsoft.VisualStudio.Imaging.dll</HintPath>
+      <HintPath>$(SsmsAssemblies)Microsoft.VisualStudio.Imaging.dll</HintPath>
       <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Shell.15.0">
-      <HintPath>..\SSMSPlus\assemblies\Microsoft.VisualStudio.Shell.15.0.dll</HintPath>
+      <HintPath>$(SsmsAssemblies)Microsoft.VisualStudio.Shell.15.0.dll</HintPath>
       <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Shell.Framework">
-      <HintPath>..\SSMSPlus\assemblies\Microsoft.VisualStudio.Shell.Framework.dll</HintPath>
+      <HintPath>$(SsmsAssemblies)Microsoft.VisualStudio.Shell.Framework.dll</HintPath>
       <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Threading">
-      <HintPath>..\SSMSPlus\assemblies\Microsoft.VisualStudio.Threading.dll</HintPath>
+      <HintPath>$(SsmsAssemblies)Microsoft.VisualStudio.Threading.dll</HintPath>
       <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Utilities">
-      <HintPath>..\SSMSPlus\assemblies\Microsoft.VisualStudio.Utilities.dll</HintPath>
+      <HintPath>$(SsmsAssemblies)Microsoft.VisualStudio.Utilities.dll</HintPath>
       <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Microsoft.VisualStudio.Validation">
-      <HintPath>..\SSMSPlus\assemblies\Microsoft.VisualStudio.Validation.dll</HintPath>
+      <HintPath>$(SsmsAssemblies)Microsoft.VisualStudio.Validation.dll</HintPath>
       <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

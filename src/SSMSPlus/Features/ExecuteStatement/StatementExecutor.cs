@@ -121,7 +121,7 @@ namespace SSMSPlus.Features.ExecuteStatement
 
         private static bool TryParse(string script, out TSqlScript parsed)
         {
-            var parser = new TSql170Parser(true);
+            var parser = SqlParsers.Create();
             IList<ParseError> errors;
             using (var reader = new StringReader(script))
             {

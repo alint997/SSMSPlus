@@ -15,6 +15,7 @@ namespace SSMSPlus.Features.ExecutionPlan
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using Task = System.Threading.Tasks.Task;
     using System.Windows;
 
     /// <summary>
@@ -334,19 +335,13 @@ namespace SSMSPlus.Features.ExecutionPlan
         {
             object info = null;
             string moniker = null;
-            ISqlEditorService editorService = null;
+            object editorService = null;
             try
             {
-                editorService = await _package.GetServiceAsync(typeof(SSqlEditorService)) as ISqlEditorService;
-                if (editorService != null)
-                {
-                    var details = editorService.GetActiveEditorDetails();
-                    if (details != null && !string.IsNullOrEmpty(details.Moniker))
-                    {
-                        moniker = details.Moniker;
-                        info = editorService.GetUIConnectionInfoForSpecificQueryEditor(moniker);
-                    }
-                }
+                editorService = await SqlEditorServiceAccess.GetAsync(t => _package.GetServiceAsync(t));
+                await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
+                moniker = SqlEditorServiceAccess.GetActiveMoniker(editorService);
+                info = SqlEditorServiceAccess.GetConnectionInfo(editorService, moniker);
             }
             catch
             {
@@ -355,7 +350,12 @@ namespace SSMSPlus.Features.ExecutionPlan
             await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
             var connection = QueryWindowConnection.GetActive(info);
             connection.Moniker = moniker;
-            return QueryWindowConnection.WithDatabase(connection, CurrentDatabase(editorService, moniker));
+
+            // SSMS 18 - 20 have no editor service (no moniker): the editor of the active window frame.
+            string database = editorService == null
+                ? SqlEditorAccess.GetCurrentDatabase(SqlEditorAccess.GetActiveEditorFromFrame())
+                : CurrentDatabase(editorService, moniker);
+            return QueryWindowConnection.WithDatabase(connection, database);
         }
 
         /// <summary>Connection of a query window that is not necessarily the active one, by its moniker.</summary>
@@ -365,12 +365,12 @@ namespace SSMSPlus.Features.ExecutionPlan
                 return await GetActiveConnectionAsync();
 
             object info = null;
-            ISqlEditorService editorService = null;
+            object editorService = null;
             try
             {
-                editorService = await _package.GetServiceAsync(typeof(SSqlEditorService)) as ISqlEditorService;
-                if (editorService != null)
-                    info = editorService.GetUIConnectionInfoForSpecificQueryEditor(moniker);
+                editorService = await SqlEditorServiceAccess.GetAsync(t => _package.GetServiceAsync(t));
+                await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
+                info = SqlEditorServiceAccess.GetConnectionInfo(editorService, moniker);
             }
             catch
             {
@@ -505,7 +505,7 @@ namespace SSMSPlus.Features.ExecutionPlan
         {
             try
             {
-                var parser = new TSql170Parser(true);
+                var parser = SqlParsers.Create();
                 IList<ParseError> errors;
                 TSqlScript parsed;
                 using (var reader = new StringReader(script))

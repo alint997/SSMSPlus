@@ -552,7 +552,8 @@ namespace SSMSPlus.Features.ExecutionPlan
         {
             _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(alwaysYield: true);
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                await System.Threading.Tasks.Task.Yield(); // run after the pending layout / render work
                 action();
             });
         }

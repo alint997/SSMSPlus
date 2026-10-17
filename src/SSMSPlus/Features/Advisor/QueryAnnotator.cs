@@ -53,7 +53,7 @@ namespace SSMSPlus.Features.Advisor
             try
             {
                 using (var reader = new StringReader(text))
-                    fragment = new TSql170Parser(true).Parse(reader, out errors);
+                    fragment = SqlParsers.Create().Parse(reader, out errors);
             }
             catch
             {

@@ -1,6 +1,7 @@
 @echo off
 rem ---------------------------------------------------------------------------
 rem  SSMSPlus - install / update into SQL Server Management Studio 22
+rem  (for SSMS 18 / 19 / 20 use install-ssms20.cmd)
 rem
 rem  Run as Administrator, with SSMS closed:
 rem     install-ssms22.cmd ["path to SSMS Common7\IDE"]

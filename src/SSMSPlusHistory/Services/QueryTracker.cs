@@ -37,7 +37,7 @@
         private HashSet<string> _knownQueryCommandKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private DateTime _lastTrackTimeUtc = DateTime.MinValue;
         private string _lastTrackText;
-        private ISqlEditorService _editorService;
+        private object _editorService;
 
         /// <summary>Raised (on a background thread) after new history items were saved.</summary>
         public static event EventHandler ItemsSaved;
@@ -235,10 +235,11 @@
             }
         }
 
-        private ISqlEditorService GetEditorService()
+        /// <summary>ISqlEditorService (SSMS 21+); null on SSMS 18 - 20.</summary>
+        private object GetEditorService()
         {
             if (_editorService == null)
-                _editorService = _packageProvider.AsyncPackage.GetServiceAsync(typeof(SSqlEditorService)).Result as ISqlEditorService;
+                _editorService = SqlEditorServiceAccess.GetAsync(t => _packageProvider.AsyncPackage.GetServiceAsync(t)).Result;
             return _editorService;
         }
 
@@ -259,15 +260,7 @@
 
         private UIConnectionInfo GetConnectionInfoFromEditorService()
         {
-            var editorService = GetEditorService();
-            if (editorService == null)
-                return null;
-
-            var details = editorService.GetActiveEditorDetails();
-            if (details == null || string.IsNullOrEmpty(details.Moniker))
-                return null;
-
-            return editorService.GetUIConnectionInfoForSpecificQueryEditor(details.Moniker);
+            return SqlEditorServiceAccess.GetActiveConnectionInfo(GetEditorService());
         }
 
         private string GetQueryText()

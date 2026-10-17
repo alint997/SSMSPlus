@@ -44,19 +44,11 @@ namespace SSMSPlusCore.Integration.Connection
             }
             catch { }
 
-            // Fallback: ISqlEditorService (more reliable in SSMS 22)
+            // Fallback: ISqlEditorService (SSMS 21+, more reliable in SSMS 22)
             try
             {
-                var editorService = _packageProvider.AsyncPackage
-                    .GetServiceAsync(typeof(SSqlEditorService)).Result as ISqlEditorService;
-                if (editorService != null)
-                {
-                    var details = editorService.GetActiveEditorDetails();
-                    if (details != null && !string.IsNullOrEmpty(details.Moniker))
-                    {
-                        return editorService.GetUIConnectionInfoForSpecificQueryEditor(details.Moniker);
-                    }
-                }
+                var editorService = SqlEditorServiceAccess.GetAsync(t => _packageProvider.AsyncPackage.GetServiceAsync(t)).Result;
+                return SqlEditorServiceAccess.GetActiveConnectionInfo(editorService);
             }
             catch { }
 

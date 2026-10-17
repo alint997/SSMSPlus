@@ -32,7 +32,7 @@ namespace SSMSPlus
     /// </para>
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = false, AllowsBackgroundLoading = true)]
-    [ProvideMenuResource("Menus.ctmenu", 7)]
+    [ProvideMenuResource("Menus.ctmenu", 10)]
     [Guid(Command1Package.PackageGuidString)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
@@ -66,6 +66,26 @@ namespace SSMSPlus
             "Microsoft.SqlServer.TransactSql.ScriptDom",
         };
 
+#if SSMS20
+        // SSMS 18 - 20 ship older versions of these and bind them with binding redirects. A second, newer copy
+        // loaded next to SSMS's would duplicate types such as ValueTask or IAsyncDisposable and break interface
+        // implementations across assemblies (e.g. "Method 'DisposeAsync' in type 'CsvHelper.CsvWriter' does not
+        // have an implementation"), so the copy SSMS uses is shared; the one in the extension folder is a fallback.
+        private static readonly string[] SharedRuntimeAssemblies = new[]
+        {
+            "System.Threading.Tasks.Extensions",
+            "Microsoft.Bcl.AsyncInterfaces",
+            "System.Runtime.CompilerServices.Unsafe",
+            "System.Memory",
+            "System.Buffers",
+            "System.Numerics.Vectors",
+            "System.ValueTuple",
+        };
+#else
+        // SSMS 21+ binds the versions the extension needs: nothing to share.
+        private static readonly string[] SharedRuntimeAssemblies = new string[0];
+#endif
+
         // Folders (relative to the SSMS IDE folder) where SSMS keeps the assemblies above.
         private static readonly string[] SsmsAssemblyFolders = new[]
         {
@@ -79,26 +99,21 @@ namespace SSMSPlus
         {
             var assemblyName = new AssemblyName(args.Name);
 
+            // Runtime libraries shared with SSMS 18 - 20: the copy SSMS loaded or keeps, else ours (below).
+            if (Array.Exists(SharedRuntimeAssemblies, n => n.Equals(assemblyName.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                var shared = FindLoaded(assemblyName.Name) ?? LoadFromIde(assemblyName.Name);
+                if (shared != null)
+                    return shared;
+            }
+
             // For SSMS-provided assemblies, always load from SSMS IDE folder
             foreach (var ssmsAsm in SsmsProvidedAssemblies)
             {
                 if (assemblyName.Name.Equals(ssmsAsm, StringComparison.OrdinalIgnoreCase))
                 {
                     // Reuse the copy SSMS already loaded, if any.
-                    foreach (var loaded in AppDomain.CurrentDomain.GetAssemblies())
-                    {
-                        if (string.Equals(loaded.GetName().Name, assemblyName.Name, StringComparison.OrdinalIgnoreCase))
-                            return loaded;
-                    }
-
-                    var ideDir = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
-                    foreach (var folder in SsmsAssemblyFolders)
-                    {
-                        var idePath = Path.Combine(ideDir, folder, assemblyName.Name + ".dll");
-                        if (File.Exists(idePath))
-                            return Assembly.LoadFrom(idePath);
-                    }
-                    return null;
+                    return FindLoaded(assemblyName.Name) ?? LoadFromIde(assemblyName.Name);
                 }
             }
 
@@ -108,6 +123,28 @@ namespace SSMSPlus
             if (File.Exists(candidatePath))
             {
                 return Assembly.LoadFrom(candidatePath);
+            }
+            return null;
+        }
+
+        private static Assembly FindLoaded(string name)
+        {
+            foreach (var loaded in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (string.Equals(loaded.GetName().Name, name, StringComparison.OrdinalIgnoreCase))
+                    return loaded;
+            }
+            return null;
+        }
+
+        private static Assembly LoadFromIde(string name)
+        {
+            var ideDir = Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+            foreach (var folder in SsmsAssemblyFolders)
+            {
+                var idePath = Path.Combine(ideDir, folder, name + ".dll");
+                if (File.Exists(idePath))
+                    return Assembly.LoadFrom(idePath);
             }
             return null;
         }

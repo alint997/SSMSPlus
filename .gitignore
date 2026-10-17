@@ -17,5 +17,6 @@ TestResults/
 /**/*.Cache
 # build output
 /dist/
+/dist-ssms20/
 # previews made by Claude, not part of the repo
 /Claude outputs/

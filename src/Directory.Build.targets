@@ -1,0 +1,8 @@
+<Project>
+  <!-- After the projects set DefineConstants (see Directory.Build.props) -->
+  <PropertyGroup Condition="'$(SsmsVersion)' == '20'">
+    <DefineConstants>$(DefineConstants);SSMS20</DefineConstants>
+    <!-- Command1Package.vsct: Condition="Defined(SSMS20)" (menu in the menu bar on SSMS 18 - 20) -->
+    <VSCTDefinitions>$(VSCTDefinitions);SSMS20</VSCTDefinitions>
+  </PropertyGroup>
+</Project>

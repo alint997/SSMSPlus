@@ -63,8 +63,16 @@
     </Groups>
 
     <Menus>
-      <Menu guid="guidCommand1PackageCmdSet" id="MyTopMenu" priority="0x0900" type="Menu">
+      <!-- SSMS 21 / 22: Tools > SSMS Plus, and also in the menu bar (see CommandPlacements) -->
+      <Menu guid="guidCommand1PackageCmdSet" id="MyTopMenu" priority="0x0900" type="Menu" Condition="!Defined(SSMS20)">
         <Parent guid="guidSHLMainMenu" id="IDG_VS_TOOLS_EXT_TOOLS"/>
+        <Strings>
+          <ButtonText>SSMS Plus</ButtonText>
+        </Strings>
+      </Menu>
+      <!-- SSMS 18 - 20 (SsmsVersion=20): its own menu in the menu bar, after Tools, as in SSMS Plus 6.x -->
+      <Menu guid="guidCommand1PackageCmdSet" id="MyTopMenu" priority="0x0900" type="Menu" Condition="Defined(SSMS20)">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_MM_TOOLSADDINS"/>
         <Strings>
           <ButtonText>SSMS Plus</ButtonText>
         </Strings>
@@ -239,6 +247,15 @@
     </CommandPlacement>
     <CommandPlacement guid="guidCommand1PackageCmdSet" id="PlanTreeActualCmd" priority="0x0210">
       <Parent guid="guidCommand1PackageCmdSet" id="EditorContextGroup"/>
+    </CommandPlacement>
+    <!--
+      SSMS 21 / 22: the same menu also in the menu bar. The Visual Studio shell moves the menu-bar menus of
+      extensions into its Extensions menu, which SSMS 22 does not show; whoever clears "SSMS Plus" in
+      Tools > Customize > Extensions Menu (then Save and Restart) gets it in the menu bar, the others keep
+      Tools > SSMS Plus. SSMS 18 - 20 have the menu only in the menu bar (see Menus).
+    -->
+    <CommandPlacement guid="guidCommand1PackageCmdSet" id="MyTopMenu" priority="0x0900" Condition="!Defined(SSMS20)">
+      <Parent guid="guidSHLMainMenu" id="IDG_VS_MM_TOOLSADDINS"/>
     </CommandPlacement>
   </CommandPlacements>
 

@@ -23,7 +23,7 @@
         public void OpenScriptInNewWindow(string script, string server, string database)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            var editorService = string.IsNullOrEmpty(database) ? null : ServiceProvider.GlobalProvider.GetService(typeof(SSqlEditorService));
+            var editorService = string.IsNullOrEmpty(database) ? null : SqlEditorServiceAccess.Get(ServiceProvider.GlobalProvider);
             var previousEditor = SqlEditorAccess.GetCurrentEditor(editorService);
 
             ServiceCache.ScriptFactory.CreateNewBlankScript(ScriptType.Sql);
@@ -48,15 +48,11 @@
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 if (editorService == null)
-                    editorService = await AsyncServiceProvider.GlobalProvider.GetServiceAsync(typeof(SSqlEditorService));
+                    editorService = await SqlEditorServiceAccess.GetAsync(t => AsyncServiceProvider.GlobalProvider.GetServiceAsync(t));
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                if (editorService == null)
-                {
-                    _logger?.LogWarning("Open from history: SqlEditorService not available, database not selected");
-                    return;
-                }
 
-                if (editorService.GetType().GetField("_currentEditor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic) == null)
+                // Without SqlEditorService (SSMS 18 - 20) the editor is read from the active window frame.
+                if (editorService != null && editorService.GetType().GetField("_currentEditor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic) == null)
                 {
                     _logger?.LogWarning("Open from history: {Type} has no _currentEditor field, database not selected", editorService.GetType().FullName);
                     return;

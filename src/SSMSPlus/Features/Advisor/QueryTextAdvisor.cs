@@ -24,7 +24,7 @@ namespace SSMSPlus.Features.Advisor
             TSqlFragment fragment;
             try
             {
-                var parser = new TSql170Parser(true);
+                var parser = SqlParsers.Create();
                 IList<ParseError> errors;
                 using (var reader = new StringReader(statement.Text))
                     fragment = parser.Parse(reader, out errors);

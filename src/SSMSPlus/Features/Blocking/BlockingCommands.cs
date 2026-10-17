@@ -11,6 +11,7 @@ namespace SSMSPlus.Features.Blocking
     using System.ComponentModel.Design;
     using System.Runtime.InteropServices;
     using System.Threading.Tasks;
+    using Task = System.Threading.Tasks.Task;
     using System.Windows;
 
     /// <summary>Tool window hosting the blocking monitor.</summary>
@@ -108,13 +109,9 @@ namespace SSMSPlus.Features.Blocking
         {
             try
             {
-                var editorService = await _package.GetServiceAsync(typeof(SSqlEditorService)) as ISqlEditorService;
-                if (editorService == null)
-                    return null;
-
-                var details = editorService.GetActiveEditorDetails();
-                if (details != null && !string.IsNullOrEmpty(details.Moniker))
-                    return editorService.GetUIConnectionInfoForSpecificQueryEditor(details.Moniker);
+                var editorService = await SqlEditorServiceAccess.GetAsync(t => _package.GetServiceAsync(t));
+                await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
+                return SqlEditorServiceAccess.GetActiveConnectionInfo(editorService);
             }
             catch
             {

@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.6 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. Older SSMS versions (18 / 19 / 20) are supported by the previous releases, see [Download](#download).
+**Version 7.7 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. The same sources also build for **SSMS 18 / 19 / 20** (32-bit) with `build.cmd ssms20` (experimental, see [Build](#build) and [Install](#ssms-20--19--18)); older releases for those versions are listed in [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -34,6 +34,7 @@ It extends SSMS with a handful set of features:
   * [Execution Plan Tree](#execution-plan-tree)
   * [Query Advisor](#query-advisor)
   * [Blocking Monitor](#blocking-monitor)
+- [What's new in 7.7](#whats-new-in-77)
 - [What's new in 7.6](#whats-new-in-76)
 - [What's new in 7.5](#whats-new-in-75)
 - [What's new in 7.4](#whats-new-in-74)
@@ -54,7 +55,7 @@ It extends SSMS with a handful set of features:
 
 # Getting started
 ## Prerequisites
-* SQL Server Management Studio 21 / 22 (64-bit) for version 7.x
+* SQL Server Management Studio 21 / 22 (64-bit) for version 7.x, or SSMS 18 / 19 / 20 with the `ssms20` build (experimental)
 * To build from source: Visual Studio 2022 or newer with the **Visual Studio extension development** workload and .NET Framework 4.8
 
 ## Download
@@ -71,7 +72,9 @@ You can also build it yourself, see [Build](#build) and [Install](#install).
 
 ### For SSMS 20 / 19 / 18
 
-These older versions are only available on the original repository ([akarzazi/SSMSPlus](https://github.com/akarzazi/SSMSPlus)):
+Version 7.x can be built for these versions from this repository: `build.cmd ssms20`, then `install-ssms20.cmd` (experimental, see [Install](#ssms-20--19--18)).
+
+The previous releases (without the 7.x features) are available on the original repository ([akarzazi/SSMSPlus](https://github.com/akarzazi/SSMSPlus)):
 
 #### SSMS 20
 
@@ -99,8 +102,9 @@ https://github.com/akarzazi/SSMSPlus/releases/tag/4.0
 From the repository root run:
 
 ```
-build.cmd            (Release)
-build.cmd Debug      (Debug)
+build.cmd            (Release, SSMS 21 / 22)
+build.cmd Debug      (Debug, SSMS 21 / 22)
+build.cmd ssms20     (Release, SSMS 18 / 19 / 20)
 ```
 
 The script finds MSBuild with `vswhere`, restores the NuGet packages, rebuilds `src/SSMSPlus.sln` and creates the `dist` folder:
@@ -110,6 +114,15 @@ The script finds MSBuild with `vswhere`, restores the NuGet packages, rebuilds `
 | `dist\SSMSPlus.vsix` | VSIX package |
 | `dist\SSMSPlus\` | extension files, ready to be copied into SSMS (used by `install-ssms22.cmd`) |
 | `dist\SSMSPlus-ssms22.zip` | release package: `SSMSPlus\` folder + `install-ssms22.cmd` |
+
+With `ssms20` the solution is compiled against the SSMS 20 assemblies in `src\SSMSPlus\assemblies\ssms20` (MSBuild property `SsmsVersion=20`, compilation symbol `SSMS20`, see `src\Directory.Build.props`) and the output goes to `dist-ssms20`:
+
+| Output | Content |
+| --- | --- |
+| `dist-ssms20\SSMSPlus\` | extension files with a manifest for the SSMS 18 - 20 shell (used by `install-ssms20.cmd`) |
+| `dist-ssms20\SSMSPlus-ssms20.zip` | release package: `SSMSPlus\` folder + `install-ssms20.cmd` |
+
+Both variants use the same `bin` folders, so run `build.cmd` again before installing into SSMS 22.
 
 The script builds with `CopyVsixExtensionFiles=false`, so it does not need administrator rights.
 
@@ -182,6 +195,20 @@ The VSIX installer puts the extension in `%LocalAppData%\Microsoft\SSMS\22.0_<id
 
 Same steps, using the SSMS 21 folder, e.g. `C:\Program Files\Microsoft SQL Server Management Studio 21\Release\Common7\IDE` (pass it as parameter to `install-ssms22.cmd`). SSMS 21 has not been tested with version 7.x.
 
+### SSMS 20 / 19 / 18
+
+Experimental: the code compiles against the SSMS 20 assemblies; the features that need SSMS 21+ APIs fall back to the older ones (the query window connection through `ServiceCache.ScriptFactory`, the current database from the active window).
+
+1. Build with `build.cmd ssms20` (or download `SSMSPlus-ssms20.zip` when a release provides it).
+2. **Close all SSMS windows.**
+3. Right click on `install-ssms20.cmd` > **Run as administrator**.
+
+The script deletes the previous `Extensions\SSMSPlus` folder (including SSMS Plus 6.x), copies `dist-ssms20\SSMSPlus` (or the `SSMSPlus` folder of the release zip) and marks the extension configuration as changed, so SSMS reloads it on the next start. The default target is SSMS 20 (`C:\Program Files (x86)\Microsoft SQL Server Management Studio 20\Common7\IDE`); for SSMS 19 or 18 pass the `Common7\IDE` folder:
+
+```
+install-ssms20.cmd "C:\Program Files (x86)\Microsoft SQL Server Management Studio 19\Common7\IDE"
+```
+
 ### Check the installation
 
 1. Start SSMS.
@@ -199,7 +226,7 @@ If something goes wrong, see [Troubleshooting](#troubleshooting).
 Your query history and search indexes are kept (they are stored in `%LocalAppData%\SSMS Plus\SSMS-Plus.sqlite`, not in the extension folder).
 
 ## Launch
-Since version 7.0 the menu is no longer a top-level menu: it is available under **Tools > SSMS Plus** (between *Code Snippets Manager...* and *External Tools...*):
+In SSMS 21 / 22 the menu is under **Tools > SSMS Plus** (between *Code Snippets Manager...* and *External Tools...*). It can also be a menu of its own in the menu bar: SSMS 22 moves the menu-bar menus of extensions into an *Extensions* menu that it does not show, so open **Tools > Customize > Extensions Menu**, clear **SSMS Plus** and click **Save and Restart** (it stays under Tools as well). In the SSMS 18 / 19 / 20 build (`build.cmd ssms20`) **SSMS Plus** is a menu of its own in the menu bar, after *Tools*, as in the 6.x releases. It contains:
 
 * Execution History (`Ctrl+Alt+H`)
 * Schema Search (`Ctrl+Alt+,`)
@@ -326,6 +353,12 @@ Shows who blocks whom right now: **Tools > SSMS Plus > Blocking Monitor** opens 
 * Auto refresh (off, 2, 5, 10, 30 s; only while the window is visible) and F5.
 * Read-only: it only queries the DMVs (`sys.dm_exec_sessions`, `sys.dm_exec_requests`, `sys.dm_exec_connections`, `sys.dm_tran_session_transactions`, `sys.dm_tran_active_transactions`, `sys.dm_exec_sql_text`); nothing is installed on the server.
 * Permissions: without `VIEW SERVER STATE` (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022+) SQL Server returns only your own session, so blocking by other users is not visible; the window shows a warning in that case. `sysadmin` logins (for example `sa`) see everything. On Azure SQL Database only the sessions of the current database are visible.
+
+# What's new in 7.7
+
+* **SSMS 18 / 19 / 20** (experimental): `build.cmd ssms20` builds the same version against the SSMS 20 assemblies and `install-ssms20.cmd` installs it (it replaces SSMS Plus 6.x); the release also contains `SSMSPlus-ssms20.zip`. Features that need SSMS 21+ APIs use the older ones (connection through `ServiceCache.ScriptFactory`, current database from the active window); runtime libraries are shared with SSMS. See [Install](#ssms-20--19--18).
+* **Menu**: in SSMS 18 - 20 **SSMS Plus** is again a menu of its own in the menu bar, as in 6.x. In SSMS 22 it stays under **Tools > SSMS Plus** and can also be shown in the menu bar: Tools > Customize > Extensions Menu, clear **SSMS Plus**, Save and Restart.
+* Build: one source tree for both variants (`src/Directory.Build.props`, `SsmsVersion`); no more MSB3277 / MSB3836 warnings from the reference assemblies and old binding redirects.
 
 # What's new in 7.6
 

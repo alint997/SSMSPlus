@@ -1,0 +1,13 @@
+<Project>
+  <!--
+    SSMS version the extension is built for (imported by every project of the solution):
+      22 (default) - SSMS 21 / 22, 64-bit, reference assemblies in SSMSPlus\assemblies
+      20           - SSMS 18 / 19 / 20, 32-bit, reference assemblies in SSMSPlus\assemblies\ssms20, symbol SSMS20
+    build.cmd ssms20   or   msbuild /p:SsmsVersion=20
+  -->
+  <PropertyGroup>
+    <SsmsVersion Condition="'$(SsmsVersion)' == ''">22</SsmsVersion>
+    <SsmsAssemblies Condition="'$(SsmsVersion)' == '20'">$(MSBuildThisFileDirectory)SSMSPlus\assemblies\ssms20\</SsmsAssemblies>
+    <SsmsAssemblies Condition="'$(SsmsAssemblies)' == ''">$(MSBuildThisFileDirectory)SSMSPlus\assemblies\</SsmsAssemblies>
+  </PropertyGroup>
+</Project>
