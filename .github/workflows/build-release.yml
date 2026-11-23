@@ -1,9 +1,9 @@
 name: Build and release (SSMS 21 / 22 and SSMS 18 / 19 / 20)
 
 # Builds the extension on every push to master / pull request (artifact only)
-# and publishes a GitHub release when a tag like v7.7 is pushed:
-#     git tag v7.7
-#     git push origin v7.7
+# and publishes a GitHub release when a tag like v7.8 is pushed:
+#     git tag v7.8
+#     git push origin v7.8
 
 on:
   push:

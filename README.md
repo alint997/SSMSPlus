@@ -1,7 +1,7 @@
 # SSMSPlus
 SSMS Plus is a productivity extension for SQL Server Management Studio.
 
-**Version 7.7 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. The same sources also build for **SSMS 18 / 19 / 20** (32-bit) with `build.cmd ssms20` (experimental, see [Build](#build) and [Install](#ssms-20--19--18)); older releases for those versions are listed in [Download](#download).
+**Version 7.8 works with SSMS 21 and SSMS 22 (64-bit)**, tested on SSMS 22.10.1. The same sources also build for **SSMS 18 / 19 / 20** (32-bit) with `build.cmd ssms20` (experimental, see [Build](#build) and [Install](#ssms-20--19--18)); older releases for those versions are listed in [Download](#download).
 
 It extends SSMS with a handful set of features:
 
@@ -34,6 +34,7 @@ It extends SSMS with a handful set of features:
   * [Execution Plan Tree](#execution-plan-tree)
   * [Query Advisor](#query-advisor)
   * [Blocking Monitor](#blocking-monitor)
+- [What's new in 7.8](#whats-new-in-78)
 - [What's new in 7.7](#whats-new-in-77)
 - [What's new in 7.6](#whats-new-in-76)
 - [What's new in 7.5](#whats-new-in-75)
@@ -353,6 +354,10 @@ Shows who blocks whom right now: **Tools > SSMS Plus > Blocking Monitor** opens 
 * Auto refresh (off, 2, 5, 10, 30 s; only while the window is visible) and F5.
 * Read-only: it only queries the DMVs (`sys.dm_exec_sessions`, `sys.dm_exec_requests`, `sys.dm_exec_connections`, `sys.dm_tran_session_transactions`, `sys.dm_tran_active_transactions`, `sys.dm_exec_sql_text`); nothing is installed on the server.
 * Permissions: without `VIEW SERVER STATE` (or `VIEW SERVER PERFORMANCE STATE` on SQL Server 2022+) SQL Server returns only your own session, so blocking by other users is not visible; the window shows a warning in that case. `sysadmin` logins (for example `sa`) see everything. On Azure SQL Database only the sessions of the current database are visible.
+
+# What's new in 7.8
+
+* **Execution History**: after *Delete* the entry selected in its place keeps the keyboard focus, so `Delete` can be pressed again (and the arrow keys used) without clicking a row first.
 
 # What's new in 7.7
 
