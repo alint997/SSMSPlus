@@ -27,6 +27,12 @@
 
         public Command<SearchFilterResultVM> DeleteCmd { get; }
 
+        /// <summary>
+        /// Raised after an entry was deleted, with the entry selected in its place: the view gives that row the
+        /// keyboard focus, so Delete can be pressed again without clicking a row (the list is rebuilt on delete).
+        /// </summary>
+        public event Action<SearchFilterResultVM> ItemDeleted;
+
         private bool _loadedOnce = false;
 
         public HistoryControlVM(QueryItemRepository itemsRepository, IVersionProvider versionProvider, IServiceCacheIntegration serviceCacheIntegration)
@@ -77,6 +83,7 @@
                 if (QueryItemsVM != null && QueryItemsVM.Count > 0 && index >= 0)
                     SelectedItem = QueryItemsVM[Math.Min(index, QueryItemsVM.Count - 1)];
                 Message = $"{QueryItemsVM?.Count ?? 0} Result(s) - 1 deleted";
+                ItemDeleted?.Invoke(SelectedItem);
             }
             catch (Exception ex)
             {
